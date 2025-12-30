@@ -151,3 +151,20 @@ tr.selected { background:#14224a !important; }
   z-index:1100;
 }
 .overlay.show{ display:block; }
+
+/* Charts */
+.chartsGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(220px,1fr));
+  gap:12px;
+}
+.chartCard{
+  background:var(--panel2);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  padding:12px;
+  overflow:hidden;
+}
+@media (max-width: 980px){
+  .chartsGrid{ grid-template-columns:1fr; }
+}
