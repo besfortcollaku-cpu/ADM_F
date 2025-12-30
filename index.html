@@ -20,6 +20,7 @@
     .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0}
     .btn2{padding:8px 10px;border-radius:10px;border:1px solid #223056;background:#101c36;color:#e6eefc;cursor:pointer}
     .btn2:hover{background:#14224a}
+    .btn2:disabled{opacity:.5;cursor:not-allowed}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;margin:12px 0}
     @media (max-width: 980px){ .grid{grid-template-columns:repeat(1,minmax(220px,1fr))} }
     .card{background:#0f1a33;border:1px solid #1f2a44;border-radius:14px;padding:14px}
@@ -49,6 +50,27 @@
       color:#e6eefc;
     }
     tr.selected { background:#14224a !important; }
+
+    /* Detail panel extras */
+    .hrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .spacer{flex:1}
+    .divider{height:1px;background:#1f2a44;margin:12px 0}
+    .btn3{
+      padding:7px 9px;border-radius:10px;border:1px solid #223056;
+      background:#0b1220;color:#e6eefc;cursor:pointer;font-size:13px
+    }
+    .btn3:hover{background:#14224a}
+    .btnDanger{border-color:#5a2330;background:#1a0f12}
+    .btnDanger:hover{background:#2a1218}
+    .btnOk{border-color:#1f3a66;background:#0d162b}
+    .btnOk:hover{background:#12224a}
+    .mini{font-size:12px}
+    .toast{
+      position:fixed; left:16px; bottom:16px;
+      background:#0f1a33; border:1px solid #223056; color:#e6eefc;
+      padding:10px 12px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      display:none; max-width:420px;
+    }
   </style>
 </head>
 
@@ -173,8 +195,40 @@
         </div>
 
         <div class="card">
-          <h3 style="margin:0 0 10px 0">User Detail</h3>
+          <div class="hrow">
+            <h3 style="margin:0">User Detail</h3>
+            <span class="spacer"></span>
+            <button class="btn3 mini" id="btn-copy-uid" disabled>Copy UID</button>
+            <button class="btn3 mini" id="btn-copy-username" disabled>Copy Username</button>
+          </div>
+
+          <div class="divider"></div>
+
           <div id="userDetail" class="muted">Click a user row to load details.</div>
+
+          <div class="divider"></div>
+
+          <div class="hrow" style="margin-bottom:10px">
+            <span class="muted">Coins:</span>
+            <input id="coinsDelta" type="number" placeholder="+50 / -50" style="width:130px" disabled />
+            <button class="btn3 btnOk" id="btn-coins-add" disabled>Add/Sub</button>
+
+            <span class="spacer"></span>
+
+            <input id="coinsSet" type="number" placeholder="Set exact" style="width:140px" disabled />
+            <button class="btn3 btnOk" id="btn-coins-set" disabled>Set</button>
+          </div>
+
+          <div class="hrow">
+            <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset coins = 0</button>
+            <button class="btn3 btnDanger" id="btn-reset-free" disabled>Reset free skips/hints</button>
+            <span class="spacer"></span>
+            <button class="btn3" id="btn-detail-refresh" disabled>Refresh detail</button>
+          </div>
+
+          <div class="muted" style="margin-top:10px">
+            Note: these actions require backend admin endpoints.
+          </div>
         </div>
       </div>
     </section>
@@ -218,6 +272,8 @@
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 const API_BASE = "https://adventuremaze.onrender.com";
 let ADMIN_SECRET = sessionStorage.getItem("ADMIN_SECRET");
@@ -226,10 +282,20 @@ let usersOffset = 0;
 const usersLimit = 25;
 let lastUsersCount = 0;
 let selectedUid = null;
+let selectedUser = null; // cache from /admin/users/:uid response
 
 function setStatus(txt) {
   const el = document.getElementById("statusText");
   if (el) el.textContent = txt;
+}
+
+function toast(msg, ms=2200) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.style.display = "none"; }, ms);
 }
 
 function requireSecret(force=false) {
@@ -257,11 +323,35 @@ async function adminFetch(path, retryOn401=true) {
 
   const txt = await res.text().catch(()=> "");
 
-  // if secret wrong, prompt once automatically then retry
   if (res.status === 401 && retryOn401) {
     try {
       requireSecret(true);
       return await adminFetch(path, false);
+    } catch {}
+  }
+
+  if (!res.ok) throw new Error("Admin request failed: " + res.status + " " + txt);
+  try { return JSON.parse(txt); } catch { return { ok:true, raw: txt }; }
+}
+
+async function adminSend(method, path, body, retryOn401=true) {
+  requireSecret();
+
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: {
+      "x-admin-secret": ADMIN_SECRET,
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : "{}"
+  });
+
+  const txt = await res.text().catch(()=> "");
+
+  if (res.status === 401 && retryOn401) {
+    try {
+      requireSecret(true);
+      return await adminSend(method, path, body, false);
     } catch {}
   }
 
@@ -310,6 +400,18 @@ async function loadDashboard() {
 /* -----------------------
    USERS
 ----------------------- */
+function setDetailEnabled(on) {
+  const ids = [
+    "btn-copy-uid","btn-copy-username","coinsDelta","btn-coins-add","coinsSet","btn-coins-set",
+    "btn-coins-reset","btn-reset-free","btn-detail-refresh"
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !on;
+  });
+}
+
 function userRowHTML(u) {
   const updated = (u.updated_at || "").toString().replace("T"," ").replace("Z","");
   const uid = String(u.uid || "");
@@ -340,6 +442,43 @@ function setUsersMeta(count) {
   meta.textContent = `Showing ${start}–${end} of ${count}`;
 }
 
+function renderUserDetail(d) {
+  // expected backend shape: { user, progress, stats, last_session }
+  const u = d?.user || {};
+  const p = d?.progress || null;
+  const s = d?.stats || {};
+  const ls = d?.last_session || null;
+
+  const parts = [];
+  parts.push(`<div class="hrow"><div><div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "—")}</div><div class="muted mono">${escapeHtml(u.uid || "")}</div></div><div class="spacer"></div><div class="pill">Coins: <b>${num(u.coins)}</b></div></div>`);
+  parts.push(`<div class="divider"></div>`);
+
+  parts.push(`<div class="grid" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin:0">
+    <div class="card" style="padding:12px">
+      <div class="kpi-title">Free skips used</div>
+      <div class="kpi-value" style="font-size:22px">${num(u.free_skips_used)}</div>
+      <div class="kpi-sub">Lifetime freebies are handled server-side</div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div class="kpi-title">Free hints used</div>
+      <div class="kpi-value" style="font-size:22px">${num(u.free_hints_used)}</div>
+      <div class="kpi-sub">Lifetime freebies are handled server-side</div>
+    </div>
+  </div>`);
+
+  parts.push(`<div class="divider"></div>`);
+
+  parts.push(`<div class="muted">Progress</div>
+    <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
+    <div class="muted">Reward stats</div>
+    <pre class="mono">${escapeHtml(JSON.stringify(s, null, 2))}</pre>
+    <div class="muted">Last session</div>
+    <pre class="mono">${escapeHtml(JSON.stringify(ls, null, 2))}</pre>
+  `);
+
+  return parts.join("");
+}
+
 async function loadUsers(reset=false) {
   try {
     setStatus("Loading users…");
@@ -359,7 +498,6 @@ async function loadUsers(reset=false) {
     const count = Number(out?.count ?? 0);
     lastUsersCount = count;
 
-    // if offset too far, step back to last page and refetch
     if (count > 0 && usersOffset >= count) {
       usersOffset = Math.max(0, Math.floor((count - 1) / usersLimit) * usersLimit);
       return loadUsers(false);
@@ -374,7 +512,6 @@ async function loadUsers(reset=false) {
 
     setUsersMeta(count);
 
-    // row click -> load details
     tbody.querySelectorAll("tr[data-uid]").forEach(tr => {
       tr.addEventListener("click", async () => {
         tbody.querySelectorAll("tr").forEach(x => x.classList.remove("selected"));
@@ -401,17 +538,23 @@ async function loadUsers(reset=false) {
 async function loadUserDetail(uid) {
   try {
     setStatus("Loading user…");
+    setDetailEnabled(false);
+    selectedUser = null;
+
     const out = await adminFetch("/admin/users/" + encodeURIComponent(uid));
     const d = out?.data || out;
 
-    document.getElementById("userDetail").innerHTML =
-      "<pre class='mono'>" + escapeHtml(JSON.stringify(d, null, 2)) + "</pre>";
+    selectedUser = d;
+    document.getElementById("userDetail").innerHTML = renderUserDetail(d);
+    setDetailEnabled(true);
 
     setStatus("OK");
   } catch (e) {
     console.error(e);
     document.getElementById("userDetail").innerHTML =
-      `<span class="danger">Error: ${escapeHtml(e?.message || String(e))}</span>`;
+      `<span class="danger">Error: ${escapeHtml(e?.message || String(e))}</span>
+       <div class="muted" style="margin-top:8px">Make sure backend route exists: <span class="mono">GET /admin/users/:uid</span></div>`;
+    setDetailEnabled(false);
     setStatus("Error");
   }
 }
@@ -476,6 +619,107 @@ function num(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+async function refreshUsersAndDetail() {
+  // refresh list (keeps paging)
+  await loadUsers(false);
+  // refresh detail if selected
+  if (selectedUid) await loadUserDetail(selectedUid);
+}
+
+/* -----------------------
+   DETAIL ACTIONS
+----------------------- */
+document.getElementById("btn-copy-uid").onclick = async () => {
+  if (!selectedUid) return;
+  await navigator.clipboard.writeText(selectedUid);
+  toast("UID copied");
+};
+
+document.getElementById("btn-copy-username").onclick = async () => {
+  const username = selectedUser?.user?.username;
+  if (!username) return;
+  await navigator.clipboard.writeText(String(username));
+  toast("Username copied");
+};
+
+document.getElementById("btn-detail-refresh").onclick = async () => {
+  if (!selectedUid) return;
+  await loadUserDetail(selectedUid);
+  toast("Detail refreshed");
+};
+
+document.getElementById("btn-coins-add").onclick = async () => {
+  if (!selectedUid) return;
+  const delta = Number(document.getElementById("coinsDelta").value || 0);
+  if (!Number.isFinite(delta) || delta === 0) {
+    alert("Enter a delta (e.g. 50 or -50)");
+    return;
+  }
+  try {
+    setStatus("Updating coins…");
+    toast("Updating coins…");
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/add", { delta });
+    await refreshUsersAndDetail();
+    setStatus("OK");
+    toast("Coins updated");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-coins-set").onclick = async () => {
+  if (!selectedUid) return;
+  const coins = Number(document.getElementById("coinsSet").value);
+  if (!Number.isFinite(coins) || coins < 0) {
+    alert("Enter a valid non-negative number");
+    return;
+  }
+  try {
+    setStatus("Setting coins…");
+    toast("Setting coins…");
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/set", { coins });
+    await refreshUsersAndDetail();
+    setStatus("OK");
+    toast("Coins set");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-coins-reset").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Reset this user's coins to 0?")) return;
+  try {
+    setStatus("Resetting coins…");
+    toast("Resetting coins…");
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/reset", {});
+    await refreshUsersAndDetail();
+    setStatus("OK");
+    toast("Coins reset");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-reset-free").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Reset free skips/hints used counters to 0?")) return;
+  try {
+    setStatus("Resetting free counters…");
+    toast("Resetting free counters…");
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/reset-free", {});
+    await refreshUsersAndDetail();
+    setStatus("OK");
+    toast("Free counters reset");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
 /* -----------------------
    NAV / INIT
 ----------------------- */
@@ -494,6 +738,7 @@ document.getElementById("btn-secret").onclick = () => {
   try {
     requireSecret(true);
     document.getElementById("btn-refresh").click();
+    toast("Secret updated");
   } catch {}
 };
 
@@ -514,10 +759,10 @@ document.getElementById("usersSearch").addEventListener("keydown", (e) => {
 
 document.getElementById("btn-online-refresh").onclick = () => loadOnline();
 
-// load dashboard on open
 window.onload = () => {
   showView("dashboard");
   loadDashboard();
+  setDetailEnabled(false);
 };
 </script>
 
