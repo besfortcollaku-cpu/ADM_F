@@ -48,6 +48,9 @@
       background:#101c36;
       font-size:12px;
       color:#e6eefc;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
     }
     tr.selected { background:#14224a !important; }
 
@@ -60,6 +63,7 @@
       background:#0b1220;color:#e6eefc;cursor:pointer;font-size:13px
     }
     .btn3:hover{background:#14224a}
+    .btn3:disabled{opacity:.5;cursor:not-allowed}
     .btnDanger{border-color:#5a2330;background:#1a0f12}
     .btnDanger:hover{background:#2a1218}
     .btnOk{border-color:#1f3a66;background:#0d162b}
@@ -70,6 +74,7 @@
       background:#0f1a33; border:1px solid #223056; color:#e6eefc;
       padding:10px 12px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35);
       display:none; max-width:420px;
+      z-index:9999;
     }
   </style>
 </head>
@@ -198,6 +203,7 @@
           <div class="hrow">
             <h3 style="margin:0">User Detail</h3>
             <span class="spacer"></span>
+            <span class="pill" id="detailMeta">No user selected</span>
             <button class="btn3 mini" id="btn-copy-uid" disabled>Copy UID</button>
             <button class="btn3 mini" id="btn-copy-username" disabled>Copy Username</button>
           </div>
@@ -227,7 +233,8 @@
           </div>
 
           <div class="muted" style="margin-top:10px">
-            Note: these actions require backend admin endpoints.
+            Note: coins actions require backend admin endpoints:
+            <span class="mono">POST /admin/users/:uid/coins/*</span> and <span class="mono">POST /admin/users/:uid/reset-free</span>
           </div>
         </div>
       </div>
@@ -284,8 +291,15 @@ let lastUsersCount = 0;
 let selectedUid = null;
 let selectedUser = null; // cache from /admin/users/:uid response
 
+function nowTime() { return new Date().toLocaleTimeString(); }
+
 function setStatus(txt) {
   const el = document.getElementById("statusText");
+  if (el) el.textContent = txt + " · " + nowTime();
+}
+
+function setDetailMeta(txt) {
+  const el = document.getElementById("detailMeta");
   if (el) el.textContent = txt;
 }
 
@@ -410,6 +424,7 @@ function setDetailEnabled(on) {
     if (!el) return;
     el.disabled = !on;
   });
+  if (!on) setDetailMeta("No user selected");
 }
 
 function userRowHTML(u) {
@@ -450,19 +465,26 @@ function renderUserDetail(d) {
   const ls = d?.last_session || null;
 
   const parts = [];
-  parts.push(`<div class="hrow"><div><div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "—")}</div><div class="muted mono">${escapeHtml(u.uid || "")}</div></div><div class="spacer"></div><div class="pill">Coins: <b>${num(u.coins)}</b></div></div>`);
+  parts.push(`<div class="hrow">
+    <div>
+      <div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "—")}</div>
+      <div class="muted mono">${escapeHtml(u.uid || "")}</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill">Coins: <b>${num(u.coins)}</b></div>
+  </div>`);
   parts.push(`<div class="divider"></div>`);
 
   parts.push(`<div class="grid" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin:0">
     <div class="card" style="padding:12px">
       <div class="kpi-title">Free skips used</div>
       <div class="kpi-value" style="font-size:22px">${num(u.free_skips_used)}</div>
-      <div class="kpi-sub">Lifetime freebies are handled server-side</div>
+      <div class="kpi-sub">Lifetime freebies handled server-side</div>
     </div>
     <div class="card" style="padding:12px">
       <div class="kpi-title">Free hints used</div>
       <div class="kpi-value" style="font-size:22px">${num(u.free_hints_used)}</div>
-      <div class="kpi-sub">Lifetime freebies are handled server-side</div>
+      <div class="kpi-sub">Lifetime freebies handled server-side</div>
     </div>
   </div>`);
 
@@ -506,6 +528,12 @@ async function loadUsers(reset=false) {
     const tbody = document.getElementById("usersTbody");
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="6" class="muted">No users found.</td></tr>`;
+      // clear selection if current page is empty
+      selectedUid = null;
+      selectedUser = null;
+      setDetailEnabled(false);
+      document.getElementById("userDetail").innerHTML = `<div class="muted">Click a user row to load details.</div>`;
+      setDetailMeta("No user selected");
     } else {
       tbody.innerHTML = rows.map(userRowHTML).join("");
     }
@@ -521,6 +549,7 @@ async function loadUsers(reset=false) {
         if (!uid) return;
 
         selectedUid = uid;
+        setDetailMeta("Selected: " + uid);
         await loadUserDetail(uid);
       });
     });
@@ -545,6 +574,9 @@ async function loadUserDetail(uid) {
     const d = out?.data || out;
 
     selectedUser = d;
+    const username = d?.user?.username ? String(d.user.username) : "";
+    setDetailMeta(username ? `Selected: ${username}` : `Selected: ${uid}`);
+
     document.getElementById("userDetail").innerHTML = renderUserDetail(d);
     setDetailEnabled(true);
 
@@ -553,7 +585,7 @@ async function loadUserDetail(uid) {
     console.error(e);
     document.getElementById("userDetail").innerHTML =
       `<span class="danger">Error: ${escapeHtml(e?.message || String(e))}</span>
-       <div class="muted" style="margin-top:8px">Make sure backend route exists: <span class="mono">GET /admin/users/:uid</span></div>`;
+       <div class="muted" style="margin-top:8px">Backend route needed: <span class="mono">GET /admin/users/:uid</span></div>`;
     setDetailEnabled(false);
     setStatus("Error");
   }
@@ -620,26 +652,38 @@ function num(v) {
 }
 
 async function refreshUsersAndDetail() {
-  // refresh list (keeps paging)
   await loadUsers(false);
-  // refresh detail if selected
   if (selectedUid) await loadUserDetail(selectedUid);
 }
 
 /* -----------------------
    DETAIL ACTIONS
 ----------------------- */
+async function copyText(text, okMsg) {
+  try {
+    await navigator.clipboard.writeText(String(text));
+    toast(okMsg || "Copied");
+  } catch {
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = String(text);
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    toast(okMsg || "Copied");
+  }
+}
+
 document.getElementById("btn-copy-uid").onclick = async () => {
   if (!selectedUid) return;
-  await navigator.clipboard.writeText(selectedUid);
-  toast("UID copied");
+  await copyText(selectedUid, "UID copied");
 };
 
 document.getElementById("btn-copy-username").onclick = async () => {
   const username = selectedUser?.user?.username;
   if (!username) return;
-  await navigator.clipboard.writeText(String(username));
-  toast("Username copied");
+  await copyText(String(username), "Username copied");
 };
 
 document.getElementById("btn-detail-refresh").onclick = async () => {
@@ -763,7 +807,14 @@ window.onload = () => {
   showView("dashboard");
   loadDashboard();
   setDetailEnabled(false);
+  setDetailMeta("No user selected");
 };
+
+// ✅ Auto-refresh dashboard every 30s (only when dashboard tab is active)
+setInterval(() => {
+  const active = document.querySelector(".tab.active")?.id || "";
+  if (active === "tab-dashboard") loadDashboard();
+}, 30000);
 </script>
 
 </body>
