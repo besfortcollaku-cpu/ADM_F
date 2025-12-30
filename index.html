@@ -1,1017 +1,193 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Adventure Maze – Admin</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Adventure Maze – Admin</title>
 
-  <style>
-    :root{
-      --bg:#0b1220;
-      --panel:#0f1a33;
-      --panel2:#101c36;
-      --border:#1f2a44;
-      --border2:#223056;
-      --text:#e6eefc;
-      --muted:#9bb0d0;
-      --accent:#2a57b8;
-      --accentBg:#17305f;
-      --danger:#ffb4b4;
-    }
+<style>
+/* ===== BASE ===== */
+body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#e6eefc}
+.app{display:flex;min-height:100vh}
+.hidden{display:none}
+.muted{color:#9bb0d0;font-size:12px}
+.mono{font-family:ui-monospace,monospace}
+.danger{color:#ffb4b4}
 
-    body { margin:0; font-family: Arial, sans-serif; background:var(--bg); color:var(--text); }
-    .app { display:flex; min-height:100vh; }
+/* ===== SIDEBAR ===== */
+.sidebar{
+  width:220px;background:#0f1a33;padding:14px;
+  border-right:1px solid #1f2a44
+}
+.brand{font-weight:800;margin-bottom:12px}
+.btn{
+  width:100%;padding:10px;margin:6px 0;
+  background:#101c36;border:1px solid #223056;
+  color:#e6eefc;border-radius:10px;text-align:left
+}
+.btn.active{background:#17305f;border-color:#2a57b8}
 
-    /* Sidebar */
-    .sidebar {
-      width:240px;
-      background:var(--panel);
-      padding:16px;
-      box-sizing:border-box;
-      border-right:1px solid var(--border);
-    }
-    .brand { font-weight:800; letter-spacing:.5px; margin-bottom:14px; }
-    .btn {
-      width:100%;
-      padding:10px 12px;
-      margin:6px 0;
-      border:1px solid var(--border2);
-      background:var(--panel2);
-      color:var(--text);
-      border-radius:10px;
-      cursor:pointer;
-      text-align:left;
-    }
-    .btn.active { background:var(--accentBg); border-color:var(--accent); }
+/* ===== MAIN ===== */
+.main{flex:1;padding:16px}
 
-    .main { flex:1; padding:18px; box-sizing:border-box; min-width:0; }
+/* ===== TOP BAR ===== */
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{
+  padding:8px 10px;border-radius:10px;
+  background:#101c36;border:1px solid #223056;color:#e6eefc
+}
+.tab.active{background:#17305f;border-color:#2a57b8}
+.pill{
+  padding:6px 10px;border-radius:999px;
+  border:1px solid #223056;background:#101c36;font-size:12px
+}
 
-    pre {
-      white-space:pre-wrap;
-      word-break:break-word;
-      background:var(--bg);
-      border:1px solid var(--border2);
-      padding:12px;
-      border-radius:10px;
-      overflow:auto;
-    }
-    .muted { color:var(--muted); font-size:12px; }
-    .danger { color:var(--danger); }
+/* ===== DASHBOARD ===== */
+.grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0
+}
+.card{
+  background:#0f1a33;border:1px solid #1f2a44;
+  border-radius:14px;padding:14px
+}
+.kpi-title{font-size:12px;color:#9bb0d0}
+.kpi-value{font-size:28px;font-weight:800}
 
-    /* === UI v2 === */
-    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0}
-    .btn2{
-      padding:8px 10px;border-radius:10px;border:1px solid var(--border2);
-      background:var(--panel2);color:var(--text);cursor:pointer
-    }
-    .btn2:hover{background:#14224a}
-    .btn2:disabled{opacity:.5;cursor:not-allowed}
+/* ===== TABLES ===== */
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #1f2a44;font-size:14px}
+tr:hover{background:#14224a}
 
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;margin:12px 0}
-    @media (max-width: 980px){ .grid{grid-template-columns:repeat(1,minmax(220px,1fr))} }
-
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
-    .kpi-title{font-size:12px;color:var(--muted);margin-bottom:6px}
-    .kpi-value{font-size:28px;font-weight:800}
-    .kpi-sub{margin-top:6px;font-size:12px;color:var(--muted)}
-
-    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px 0}
-    .tab{padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--panel2);color:var(--text);cursor:pointer}
-    .tab.active{background:var(--accentBg);border-color:var(--accent)}
-
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{padding:10px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:top}
-    .table tr:hover{background:#0b1833}
-
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .hidden{display:none}
-    input, select { padding:10px; border-radius:10px; border:1px solid var(--border2); background:var(--bg); color:var(--text); outline:none; }
-
-    .split{display:grid;grid-template-columns: 1.1fr .9fr; gap:12px;}
-    @media (max-width: 980px){ .split{grid-template-columns:1fr} }
-
-    .pill{
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--border2);
-      background:var(--panel2);
-      font-size:12px;
-      color:var(--text);
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      white-space:nowrap;
-    }
-    tr.selected { background:#14224a !important; }
-
-    /* Detail panel extras */
-    .hrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .spacer{flex:1}
-    .divider{height:1px;background:var(--border);margin:12px 0}
-    .btn3{
-      padding:7px 9px;border-radius:10px;border:1px solid var(--border2);
-      background:var(--bg);color:var(--text);cursor:pointer;font-size:13px
-    }
-    .btn3:hover{background:#14224a}
-    .btn3:disabled{opacity:.5;cursor:not-allowed}
-    .btnDanger{border-color:#5a2330;background:#1a0f12}
-    .btnDanger:hover{background:#2a1218}
-    .btnOk{border-color:#1f3a66;background:#0d162b}
-    .btnOk:hover{background:#12224a}
-    .mini{font-size:12px}
-
-    .toast{
-      position:fixed; left:16px; bottom:16px;
-      background:var(--panel); border:1px solid var(--border2); color:var(--text);
-      padding:10px 12px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35);
-      display:none; max-width:420px;
-      z-index:9999;
-    }
-
-    /* ===== Mobile Layout (Phones) ===== */
-    .topbar{
-      display:none;
-      position:sticky;
-      top:0;
-      z-index:50;
-      background:var(--panel);
-      border-bottom:1px solid var(--border);
-      padding:10px 12px;
-      box-sizing:border-box;
-    }
-    .topbarRow{display:flex;align-items:center;gap:10px}
-    .iconBtn{
-      border:1px solid var(--border2);
-      background:var(--panel2);
-      color:var(--text);
-      border-radius:10px;
-      padding:8px 10px;
-      cursor:pointer;
-    }
-    .overlay{
-      display:none;
-      position:fixed; inset:0;
-      background:rgba(0,0,0,.55);
-      z-index:60;
-    }
-
-    @media (max-width: 720px){
-      .app{flex-direction:column}
-      .sidebar{
-        position:fixed;
-        top:0; left:0;
-        height:100vh;
-        width:280px;
-        transform:translateX(-110%);
-        transition:transform .18s ease;
-        z-index:70;
-        border-right:1px solid var(--border);
-      }
-      .sidebar.open{transform:translateX(0)}
-      .topbar{display:block}
-      .main{padding:12px; padding-top:12px}
-
-      .tabs{width:100%}
-      .tab{flex:1; text-align:center}
-      .right{width:100%}
-      .btn2{flex:1}
-
-      .toolbar{gap:8px}
-      input, select{width:100%; min-width:0 !important}
-      .hrow .pill{width:100%; justify-content:center}
-      .split{grid-template-columns:1fr}
-
-      /* tables: keep readable via horizontal scroll container */
-      .tableWrap{overflow:auto; -webkit-overflow-scrolling:touch}
-      .table{min-width:780px}
-      .table th,.table td{font-size:13px}
-    }
-  </style>
+/* ===== MOBILE ===== */
+@media(max-width:800px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid #1f2a44}
+  .grid{grid-template-columns:1fr}
+  th,td{font-size:13px}
+}
+</style>
 </head>
 
 <body>
+<div class="app">
 
-  <!-- Mobile Topbar -->
-  <div class="topbar">
-    <div class="topbarRow">
-      <button class="iconBtn" id="btnMenu">☰</button>
-      <div style="font-weight:800;letter-spacing:.4px">Adventure Maze <span class="muted">Admin</span></div>
-      <div class="spacer"></div>
-      <span id="statusTextMobile" class="pill">Idle</span>
-    </div>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="brand">Adventure Maze<br><span class="muted">Admin Panel</span></div>
+  <button class="btn active">Admin</button>
+  <div class="muted">Secret saved per tab</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- TOP -->
+<div class="toolbar">
+  <div class="tabs">
+    <button class="tab active" id="tab-dashboard">Dashboard</button>
+    <button class="tab" id="tab-users">Users</button>
+    <button class="tab" id="tab-online">Online</button>
   </div>
+  <span class="pill" id="statusText">Idle</span>
+</div>
 
-  <div class="overlay" id="overlay"></div>
-
-  <div class="app">
-
-    <!-- SIDEBAR -->
-    <div class="sidebar" id="sidebar">
-      <div class="brand">
-        Adventure Maze<br/>
-        <span class="muted">Admin Panel</span>
-      </div>
-
-      <button class="btn active" id="nav-home">Admin</button>
-
-      <div style="margin-top:12px" class="muted">
-        Tip: secret is saved in sessionStorage (this tab only).
-      </div>
-    </div>
-
-    <!-- MAIN -->
-    <div class="main">
-      <div class="toolbar">
-        <div class="tabs">
-          <button class="tab active" id="tab-dashboard">Dashboard</button>
-          <button class="tab" id="tab-users">Users</button>
-          <button class="tab" id="tab-online">Online</button>
-        </div>
-
-        <div class="right" style="margin-left:auto">
-          <span class="muted">Status:</span>
-          <span id="statusText" class="pill">Idle</span>
-          <button class="btn2" id="btn-refresh">Refresh</button>
-          <button class="btn2" id="btn-secret">Change secret</button>
-        </div>
-      </div>
-
-      <!-- DASHBOARD VIEW -->
-      <section id="view-dashboard">
-        <h2 style="margin:8px 0 0 0">Dashboard</h2>
-
-        <div class="grid">
-          <div class="card">
-            <div class="kpi-title">Total Users</div>
-            <div class="kpi-value" id="kpiUsers">–</div>
-            <div class="kpi-sub">Registered users in DB</div>
-          </div>
-          <div class="card">
-            <div class="kpi-title">Total Coins</div>
-            <div class="kpi-value" id="kpiCoins">–</div>
-            <div class="kpi-sub">Sum of user coins</div>
-          </div>
-          <div class="card">
-            <div class="kpi-title">Online Now</div>
-            <div class="kpi-value" id="kpiOnline">–</div>
-            <div class="kpi-sub">Seen in last N minutes</div>
-          </div>
-
-          <div class="card">
-            <div class="kpi-title">Ad +50 Claims</div>
-            <div class="kpi-value" id="kpiAdCount">–</div>
-            <div class="kpi-sub">Count of reward_claims type=ad_50</div>
-          </div>
-          <div class="card">
-            <div class="kpi-title">Daily Logins</div>
-            <div class="kpi-value" id="kpiDailyCount">–</div>
-            <div class="kpi-sub">Count of daily_login claims</div>
-          </div>
-          <div class="card">
-            <div class="kpi-title">Levels Completed</div>
-            <div class="kpi-value" id="kpiLevels">–</div>
-            <div class="kpi-sub">Rows in level_rewards</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 10px 0">Raw</h3>
-          <div id="dashboard">Loading…</div>
-        </div>
-      </section>
-
-      <!-- USERS VIEW -->
-      <section id="view-users" class="hidden">
-        <h2 style="margin:8px 0 0 0">Users</h2>
-
-        <div class="toolbar">
-          <input id="usersSearch" placeholder="Search username or uid…" style="min-width:260px"/>
-          <select id="usersOrder">
-            <option value="updated_at_desc">Order: Updated</option>
-            <option value="coins_desc">Order: Coins</option>
-            <option value="created_at_desc">Order: Created</option>
-          </select>
-          <button class="btn2" id="btn-users-search">Search</button>
-
-          <div class="right" style="margin-left:auto">
-            <button class="btn2" id="btn-users-prev">Prev</button>
-            <button class="btn2" id="btn-users-next">Next</button>
-            <span class="muted" id="usersMeta">–</span>
-          </div>
-        </div>
-
-        <div class="split">
-          <div class="card">
-            <h3 style="margin:0 0 10px 0">List</h3>
-            <div class="tableWrap">
-              <table class="table" id="usersTable">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>UID</th>
-                    <th>Coins</th>
-                    <th>Skips</th>
-                    <th>Hints</th>
-                    <th>Updated</th>
-                  </tr>
-                </thead>
-                <tbody id="usersTbody">
-                  <tr><td colspan="6" class="muted">Loading…</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="hrow">
-              <h3 style="margin:0">User Detail</h3>
-              <span class="spacer"></span>
-              <span class="pill" id="detailMeta">No user selected</span>
-              <button class="btn3 mini" id="btn-copy-uid" disabled>Copy UID</button>
-              <button class="btn3 mini" id="btn-copy-username" disabled>Copy Username</button>
-            </div>
-
-            <div class="divider"></div>
-
-            <div id="userDetail" class="muted">Click a user row to load details.</div>
-
-            <div class="divider"></div>
-
-            <div class="hrow" style="margin-bottom:10px">
-              <span class="muted">Coins:</span>
-              <input id="coinsDelta" type="number" placeholder="+50 / -50" style="width:130px" disabled />
-              <button class="btn3 btnOk" id="btn-coins-add" disabled>Add/Sub</button>
-
-              <span class="spacer"></span>
-
-              <input id="coinsSet" type="number" placeholder="Set exact" style="width:140px" disabled />
-              <button class="btn3 btnOk" id="btn-coins-set" disabled>Set</button>
-            </div>
-
-            <div class="hrow">
-              <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset coins = 0</button>
-              <button class="btn3 btnDanger" id="btn-reset-free" disabled>Reset free skips/hints</button>
-              <span class="spacer"></span>
-              <button class="btn3" id="btn-detail-refresh" disabled>Refresh detail</button>
-            </div>
-
-            <div class="muted" style="margin-top:10px">
-              Note: coins actions require backend admin endpoints:
-              <span class="mono">POST /admin/users/:uid/coins/*</span> and <span class="mono">POST /admin/users/:uid/reset-free</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ONLINE VIEW -->
-      <section id="view-online" class="hidden">
-        <h2 style="margin:8px 0 0 0">Online</h2>
-
-        <div class="toolbar">
-          <span class="muted">Minutes window:</span>
-          <input id="onlineMinutes" type="number" min="1" value="5" style="width:90px"/>
-          <button class="btn2" id="btn-online-refresh">Refresh</button>
-
-          <div class="right" style="margin-left:auto">
-            <span class="muted" id="onlineMeta">–</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="hrow" style="margin-bottom:8px">
-            <div class="pill" id="onlineFetchMeta">Last fetch: –</div>
-            <span class="spacer"></span>
-            <button class="btn3 mini" id="btn-online-raw">Toggle raw</button>
-          </div>
-
-          <div class="muted" style="margin-bottom:10px">
-            If this stays empty: the game must call <span class="mono">POST /api/session/start</span> once
-            and then <span class="mono">POST /api/session/ping</span> every ~20–60s while the player is active.
-          </div>
-
-          <h3 style="margin:0 0 10px 0">Sessions</h3>
-
-          <div class="tableWrap">
-            <table class="table" id="onlineTable">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>UID</th>
-                  <th>Coins</th>
-                  <th>Last Seen</th>
-                  <th>Started</th>
-                  <th>User Agent</th>
-                </tr>
-              </thead>
-              <tbody id="onlineTbody">
-                <tr><td colspan="6" class="muted">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="divider"></div>
-
-          <div id="onlineRawWrap" class="hidden">
-            <div class="muted">Raw response (debug)</div>
-            <pre class="mono" id="onlineRaw">(none yet)</pre>
-          </div>
-        </div>
-      </section>
-
-    </div>
+<!-- DASHBOARD -->
+<section id="view-dashboard">
+  <div class="grid">
+    <div class="card"><div class="kpi-title">Users</div><div id="kpiUsers" class="kpi-value">–</div></div>
+    <div class="card"><div class="kpi-title">Coins</div><div id="kpiCoins" class="kpi-value">–</div></div>
+    <div class="card"><div class="kpi-title">Online</div><div id="kpiOnline" class="kpi-value">–</div></div>
   </div>
+  <pre id="dashboard" class="mono">Loading…</pre>
+</section>
 
-  <div class="toast" id="toast"></div>
+<!-- USERS -->
+<section id="view-users" class="hidden">
+  <div class="card table-wrap">
+    <table>
+      <thead>
+        <tr><th>Username</th><th>UID</th><th>Coins</th></tr>
+      </thead>
+      <tbody id="usersTbody">
+        <tr><td colspan="3" class="muted">Load users</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ONLINE -->
+<section id="view-online" class="hidden">
+  <div class="muted" style="margin-bottom:8px">
+    Shows users with active sessions (game must call session/start + ping)
+  </div>
+  <div class="card table-wrap">
+    <table>
+      <thead>
+        <tr><th>User</th><th>UID</th><th>Last Seen</th></tr>
+      </thead>
+      <tbody id="onlineTbody">
+        <tr><td colspan="3" class="muted">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+</div>
 
 <script>
-const API_BASE = "https://adventuremaze.onrender.com";
-let ADMIN_SECRET = sessionStorage.getItem("ADMIN_SECRET");
+const API="https://adventuremaze.onrender.com";
+let SECRET=sessionStorage.getItem("ADMIN_SECRET");
 
-let usersOffset = 0;
-const usersLimit = 25;
-let lastUsersCount = 0;
-let selectedUid = null;
-let selectedUser = null; // cache from /admin/users/:uid response
-let lastOnlineRaw = null;
-
-function nowTime() { return new Date().toLocaleTimeString(); }
-
-function setStatus(txt) {
-  const label = txt + " · " + nowTime();
-  const el = document.getElementById("statusText");
-  if (el) el.textContent = label;
-
-  const m = document.getElementById("statusTextMobile");
-  if (m) m.textContent = txt;
-}
-
-function setDetailMeta(txt) {
-  const el = document.getElementById("detailMeta");
-  if (el) el.textContent = txt;
-}
-
-function toast(msg, ms=2200) {
-  const el = document.getElementById("toast");
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = "block";
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => { el.style.display = "none"; }, ms);
-}
-
-function requireSecret(force=false) {
-  if (force) {
-    sessionStorage.removeItem("ADMIN_SECRET");
-    ADMIN_SECRET = null;
-  }
-  if (!ADMIN_SECRET) {
-    ADMIN_SECRET = prompt("Enter admin secret:");
-    if (!ADMIN_SECRET) {
-      alert("Admin secret required");
-      throw new Error("No admin secret");
-    }
-    sessionStorage.setItem("ADMIN_SECRET", ADMIN_SECRET);
+function needSecret(){
+  if(!SECRET){
+    SECRET=prompt("Admin secret:");
+    sessionStorage.setItem("ADMIN_SECRET",SECRET);
   }
 }
 
-async function adminFetch(path, retryOn401=true) {
-  requireSecret();
+async function af(path){
+  needSecret();
+  const r=await fetch(API+path,{headers:{"x-admin-secret":SECRET}});
+  return r.json();
+}
 
-  const res = await fetch(API_BASE + path, {
-    method: "GET",
-    headers: { "x-admin-secret": ADMIN_SECRET }
+function show(v){
+  ["dashboard","users","online"].forEach(x=>{
+    document.getElementById("view-"+x).classList.toggle("hidden",x!==v);
+    document.getElementById("tab-"+x).classList.toggle("active",x===v);
   });
+}
 
-  const txt = await res.text().catch(()=> "");
+async function loadDash(){
+  const d=await af("/admin/stats");
+  document.getElementById("kpiUsers").textContent=d.data.users_total;
+  document.getElementById("kpiCoins").textContent=d.data.coins_total;
+  document.getElementById("kpiOnline").textContent=d.data.online_now;
+  document.getElementById("dashboard").textContent=JSON.stringify(d,null,2);
+}
 
-  if (res.status === 401 && retryOn401) {
-    try {
-      requireSecret(true);
-      return await adminFetch(path, false);
-    } catch {}
+async function loadOnline(){
+  const d=await af("/admin/online?minutes=5");
+  document.getElementById("onlineTbody").innerHTML=
+    d.rows.length
+    ? d.rows.map(r=>`<tr><td>${r.username}</td><td>${r.uid}</td><td>${r.last_seen_at}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="muted">No active sessions</td></tr>`;
+}
+
+document.getElementById("tab-dashboard").onclick=()=>{show("dashboard");loadDash();}
+document.getElementById("tab-online").onclick=()=>{show("online");loadOnline();}
+document.getElementById("tab-users").onclick=()=>show("users");
+
+setInterval(()=>{
+  if(document.getElementById("tab-online").classList.contains("active")){
+    loadOnline();
   }
+},15000);
 
-  if (!res.ok) throw new Error("Admin request failed: " + res.status + " " + txt);
-  try { return JSON.parse(txt); } catch { return { ok:true, raw: txt }; }
-}
-
-async function adminSend(method, path, body, retryOn401=true) {
-  requireSecret();
-
-  const res = await fetch(API_BASE + path, {
-    method,
-    headers: {
-      "x-admin-secret": ADMIN_SECRET,
-      "Content-Type": "application/json"
-    },
-    body: body ? JSON.stringify(body) : "{}"
-  });
-
-  const txt = await res.text().catch(()=> "");
-
-  if (res.status === 401 && retryOn401) {
-    try {
-      requireSecret(true);
-      return await adminSend(method, path, body, false);
-    } catch {}
-  }
-
-  if (!res.ok) throw new Error("Admin request failed: " + res.status + " " + txt);
-  try { return JSON.parse(txt); } catch { return { ok:true, raw: txt }; }
-}
-
-function showView(which) {
-  document.querySelectorAll("section[id^='view-']").forEach(s => s.classList.add("hidden"));
-  const view = document.getElementById("view-" + which);
-  if (view) view.classList.remove("hidden");
-
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  const tab = document.getElementById("tab-" + which);
-  if (tab) tab.classList.add("active");
-
-  // mobile: close menu after navigating
-  closeMenu();
-}
-
-/* -----------------------
-   DASHBOARD
------------------------ */
-async function loadDashboard() {
-  try {
-    setStatus("Loading dashboard…");
-    const out = await adminFetch("/admin/stats");
-
-    const d = out?.data || {};
-    document.getElementById("kpiUsers").textContent = d.users_total ?? "–";
-    document.getElementById("kpiCoins").textContent = d.coins_total ?? "–";
-    document.getElementById("kpiOnline").textContent = d.online_now ?? "–";
-    document.getElementById("kpiAdCount").textContent = d.ad50_count ?? "–";
-    document.getElementById("kpiDailyCount").textContent = d.daily_login_count ?? "–";
-    document.getElementById("kpiLevels").textContent = d.level_complete_count ?? "–";
-
-    document.getElementById("dashboard").innerHTML =
-      "<pre class='mono'>" + escapeHtml(JSON.stringify(out, null, 2)) + "</pre>";
-
-    setStatus("OK");
-  } catch (e) {
-    console.error(e);
-    document.getElementById("dashboard").innerHTML =
-      "<span class='danger'>Error: " + escapeHtml(e?.message || String(e)) + "</span>";
-    setStatus("Error");
-  }
-}
-
-/* -----------------------
-   USERS
------------------------ */
-function setDetailEnabled(on) {
-  const ids = [
-    "btn-copy-uid","btn-copy-username","coinsDelta","btn-coins-add","coinsSet","btn-coins-set",
-    "btn-coins-reset","btn-reset-free","btn-detail-refresh"
-  ];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.disabled = !on;
-  });
-  if (!on) setDetailMeta("No user selected");
-}
-
-function userRowHTML(u) {
-  const updated = (u.updated_at || "").toString().replace("T"," ").replace("Z","");
-  const uid = String(u.uid || "");
-  const isSel = selectedUid && selectedUid === uid;
-  return `
-    <tr data-uid="${escapeHtml(uid)}" class="${isSel ? "selected" : ""}">
-      <td>${escapeHtml(u.username || "")}</td>
-      <td class="mono">${escapeHtml(uid)}</td>
-      <td>${num(u.coins)}</td>
-      <td>${num(u.free_skips_used)}</td>
-      <td>${num(u.free_hints_used)}</td>
-      <td class="muted">${escapeHtml(updated)}</td>
-    </tr>
-  `;
-}
-
-function setUsersMeta(count) {
-  const meta = document.getElementById("usersMeta");
-  if (!meta) return;
-
-  if (!count) {
-    meta.textContent = "0 users";
-    return;
-  }
-
-  const start = Math.min(count, usersOffset + 1);
-  const end = Math.min(count, usersOffset + usersLimit);
-  meta.textContent = `Showing ${start}–${end} of ${count}`;
-}
-
-function renderUserDetail(d) {
-  const u = d?.user || {};
-  const p = d?.progress || null;
-  const s = d?.stats || {};
-  const ls = d?.last_session || null;
-
-  const parts = [];
-  parts.push(`<div class="hrow">
-    <div>
-      <div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "—")}</div>
-      <div class="muted mono">${escapeHtml(u.uid || "")}</div>
-    </div>
-    <div class="spacer"></div>
-    <div class="pill">Coins: <b>${num(u.coins)}</b></div>
-  </div>`);
-  parts.push(`<div class="divider"></div>`);
-
-  parts.push(`<div class="grid" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin:0">
-    <div class="card" style="padding:12px">
-      <div class="kpi-title">Free skips used</div>
-      <div class="kpi-value" style="font-size:22px">${num(u.free_skips_used)}</div>
-      <div class="kpi-sub">Lifetime freebies handled server-side</div>
-    </div>
-    <div class="card" style="padding:12px">
-      <div class="kpi-title">Free hints used</div>
-      <div class="kpi-value" style="font-size:22px">${num(u.free_hints_used)}</div>
-      <div class="kpi-sub">Lifetime freebies handled server-side</div>
-    </div>
-  </div>`);
-
-  parts.push(`<div class="divider"></div>`);
-
-  parts.push(`<div class="muted">Progress</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
-    <div class="muted">Reward stats</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(s, null, 2))}</pre>
-    <div class="muted">Last session</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(ls, null, 2))}</pre>
-  `);
-
-  return parts.join("");
-}
-
-async function loadUsers(reset=false) {
-  try {
-    setStatus("Loading users…");
-    if (reset) usersOffset = 0;
-
-    const q = document.getElementById("usersSearch").value.trim();
-    const order = document.getElementById("usersOrder").value;
-
-    const url = "/admin/users"
-      + "?search=" + encodeURIComponent(q)
-      + "&limit=" + encodeURIComponent(usersLimit)
-      + "&offset=" + encodeURIComponent(usersOffset)
-      + "&order=" + encodeURIComponent(order);
-
-    const out = await adminFetch(url);
-    const rows = out?.rows || [];
-    const count = Number(out?.count ?? 0);
-    lastUsersCount = count;
-
-    if (count > 0 && usersOffset >= count) {
-      usersOffset = Math.max(0, Math.floor((count - 1) / usersLimit) * usersLimit);
-      return loadUsers(false);
-    }
-
-    const tbody = document.getElementById("usersTbody");
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">No users found.</td></tr>`;
-      selectedUid = null;
-      selectedUser = null;
-      setDetailEnabled(false);
-      document.getElementById("userDetail").innerHTML = `<div class="muted">Click a user row to load details.</div>`;
-      setDetailMeta("No user selected");
-    } else {
-      tbody.innerHTML = rows.map(userRowHTML).join("");
-    }
-
-    setUsersMeta(count);
-
-    tbody.querySelectorAll("tr[data-uid]").forEach(tr => {
-      tr.addEventListener("click", async () => {
-        tbody.querySelectorAll("tr").forEach(x => x.classList.remove("selected"));
-        tr.classList.add("selected");
-
-        const uid = tr.getAttribute("data-uid");
-        if (!uid) return;
-
-        selectedUid = uid;
-        setDetailMeta("Selected: " + uid);
-        await loadUserDetail(uid);
-      });
-    });
-
-    setStatus("OK");
-  } catch (e) {
-    console.error(e);
-    document.getElementById("usersTbody").innerHTML =
-      `<tr><td colspan="6" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
-    setUsersMeta(0);
-    setStatus("Error");
-  }
-}
-
-async function loadUserDetail(uid) {
-  try {
-    setStatus("Loading user…");
-    setDetailEnabled(false);
-    selectedUser = null;
-
-    const out = await adminFetch("/admin/users/" + encodeURIComponent(uid));
-    const d = out?.data || out;
-
-    selectedUser = d;
-    const username = d?.user?.username ? String(d.user.username) : "";
-    setDetailMeta(username ? `Selected: ${username}` : `Selected: ${uid}`);
-
-    document.getElementById("userDetail").innerHTML = renderUserDetail(d);
-    setDetailEnabled(true);
-
-    setStatus("OK");
-  } catch (e) {
-    console.error(e);
-    document.getElementById("userDetail").innerHTML =
-      `<span class="danger">Error: ${escapeHtml(e?.message || String(e))}</span>
-       <div class="muted" style="margin-top:8px">Backend route needed: <span class="mono">GET /admin/users/:uid</span></div>`;
-    setDetailEnabled(false);
-    setStatus("Error");
-  }
-}
-
-/* -----------------------
-   ONLINE
------------------------ */
-function onlineRowHTML(r) {
-  const lastSeen = (r.last_seen_at || "").toString().replace("T"," ").replace("Z","");
-  const started = (r.started_at || "").toString().replace("T"," ").replace("Z","");
-  return `
-    <tr>
-      <td>${escapeHtml(r.username || "")}</td>
-      <td class="mono">${escapeHtml(r.uid || "")}</td>
-      <td>${num(r.coins)}</td>
-      <td class="muted">${escapeHtml(lastSeen)}</td>
-      <td class="muted">${escapeHtml(started)}</td>
-      <td class="muted">${escapeHtml((r.user_agent || "").slice(0,120))}</td>
-    </tr>
-  `;
-}
-
-async function loadOnline() {
-  const tbody = document.getElementById("onlineTbody");
-  const meta = document.getElementById("onlineMeta");
-  const fetchMeta = document.getElementById("onlineFetchMeta");
-  const rawEl = document.getElementById("onlineRaw");
-
-  try {
-    setStatus("Loading online…");
-    const minutes = Math.max(1, Number(document.getElementById("onlineMinutes").value || 5));
-
-    const out = await adminFetch("/admin/online?minutes=" + encodeURIComponent(minutes) + "&limit=50&offset=0");
-    lastOnlineRaw = out;
-    if (rawEl) rawEl.textContent = JSON.stringify(out, null, 2);
-
-    const rows = out?.rows || [];
-    const count = Number(out?.count ?? rows.length);
-
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">
-        No online users in last ${minutes} minutes.
-        <div class="muted" style="margin-top:6px">
-          If you expect players: confirm the game client calls <span class="mono">/api/session/start</span> and <span class="mono">/api/session/ping</span>.
-        </div>
-      </td></tr>`;
-    } else {
-      tbody.innerHTML = rows.map(onlineRowHTML).join("");
-    }
-
-    if (meta) meta.textContent = `${count} online (window ${minutes}m)`;
-    if (fetchMeta) fetchMeta.textContent = `Last fetch: ${nowTime()} · rows=${rows.length} · count=${count}`;
-
-    setStatus("OK");
-  } catch (e) {
-    console.error(e);
-    if (meta) meta.textContent = "–";
-    if (fetchMeta) fetchMeta.textContent = `Last fetch: ${nowTime()} · ERROR`;
-    tbody.innerHTML = `<tr><td colspan="6" class="danger">
-      Error: ${escapeHtml(e?.message || String(e))}
-      <div class="muted" style="margin-top:6px">Open DevTools → Network → check GET <span class="mono">/admin/online</span></div>
-    </td></tr>`;
-    if (rawEl) rawEl.textContent = "(error)";
-    setStatus("Error");
-  }
-}
-
-/* -----------------------
-   HELPERS
------------------------ */
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-function num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-async function refreshUsersAndDetail() {
-  await loadUsers(false);
-  if (selectedUid) await loadUserDetail(selectedUid);
-}
-
-/* -----------------------
-   DETAIL ACTIONS
------------------------ */
-async function copyText(text, okMsg) {
-  try {
-    await navigator.clipboard.writeText(String(text));
-    toast(okMsg || "Copied");
-  } catch {
-    const ta = document.createElement("textarea");
-    ta.value = String(text);
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    ta.remove();
-    toast(okMsg || "Copied");
-  }
-}
-
-document.getElementById("btn-copy-uid").onclick = async () => {
-  if (!selectedUid) return;
-  await copyText(selectedUid, "UID copied");
-};
-
-document.getElementById("btn-copy-username").onclick = async () => {
-  const username = selectedUser?.user?.username;
-  if (!username) return;
-  await copyText(String(username), "Username copied");
-};
-
-document.getElementById("btn-detail-refresh").onclick = async () => {
-  if (!selectedUid) return;
-  await loadUserDetail(selectedUid);
-  toast("Detail refreshed");
-};
-
-document.getElementById("btn-coins-add").onclick = async () => {
-  if (!selectedUid) return;
-  const delta = Number(document.getElementById("coinsDelta").value || 0);
-  if (!Number.isFinite(delta) || delta === 0) {
-    alert("Enter a delta (e.g. 50 or -50)");
-    return;
-  }
-  try {
-    setStatus("Updating coins…");
-    toast("Updating coins…");
-    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/add", { delta });
-    await refreshUsersAndDetail();
-    setStatus("OK");
-    toast("Coins updated");
-  } catch (e) {
-    alert(e?.message || String(e));
-    setStatus("Error");
-  }
-};
-
-document.getElementById("btn-coins-set").onclick = async () => {
-  if (!selectedUid) return;
-  const coins = Number(document.getElementById("coinsSet").value);
-  if (!Number.isFinite(coins) || coins < 0) {
-    alert("Enter a valid non-negative number");
-    return;
-  }
-  try {
-    setStatus("Setting coins…");
-    toast("Setting coins…");
-    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/set", { coins });
-    await refreshUsersAndDetail();
-    setStatus("OK");
-    toast("Coins set");
-  } catch (e) {
-    alert(e?.message || String(e));
-    setStatus("Error");
-  }
-};
-
-document.getElementById("btn-coins-reset").onclick = async () => {
-  if (!selectedUid) return;
-  if (!confirm("Reset this user's coins to 0?")) return;
-  try {
-    setStatus("Resetting coins…");
-    toast("Resetting coins…");
-    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/reset", {});
-    await refreshUsersAndDetail();
-    setStatus("OK");
-    toast("Coins reset");
-  } catch (e) {
-    alert(e?.message || String(e));
-    setStatus("Error");
-  }
-};
-
-document.getElementById("btn-reset-free").onclick = async () => {
-  if (!selectedUid) return;
-  if (!confirm("Reset free skips/hints used counters to 0?")) return;
-  try {
-    setStatus("Resetting free counters…");
-    toast("Resetting free counters…");
-    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/reset-free", {});
-    await refreshUsersAndDetail();
-    setStatus("OK");
-    toast("Free counters reset");
-  } catch (e) {
-    alert(e?.message || String(e));
-    setStatus("Error");
-  }
-};
-
-/* -----------------------
-   NAV / INIT
------------------------ */
-document.getElementById("tab-dashboard").onclick = () => { showView("dashboard"); loadDashboard(); };
-document.getElementById("tab-users").onclick = () => { showView("users"); loadUsers(true); };
-document.getElementById("tab-online").onclick = () => { showView("online"); loadOnline(); };
-
-document.getElementById("btn-refresh").onclick = () => {
-  const active = document.querySelector(".tab.active")?.id || "tab-dashboard";
-  if (active === "tab-users") loadUsers(false);
-  else if (active === "tab-online") loadOnline();
-  else loadDashboard();
-};
-
-document.getElementById("btn-secret").onclick = () => {
-  try {
-    requireSecret(true);
-    document.getElementById("btn-refresh").click();
-    toast("Secret updated");
-  } catch {}
-};
-
-document.getElementById("btn-users-search").onclick = () => loadUsers(true);
-document.getElementById("btn-users-prev").onclick = () => {
-  usersOffset = Math.max(0, usersOffset - usersLimit);
-  loadUsers(false);
-};
-document.getElementById("btn-users-next").onclick = () => {
-  if (lastUsersCount > 0 && usersOffset + usersLimit >= lastUsersCount) return;
-  usersOffset = usersOffset + usersLimit;
-  loadUsers(false);
-};
-
-document.getElementById("usersSearch").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loadUsers(true);
-});
-
-document.getElementById("btn-online-refresh").onclick = () => loadOnline();
-
-/* Online debug toggle */
-document.getElementById("btn-online-raw").onclick = () => {
-  const w = document.getElementById("onlineRawWrap");
-  if (!w) return;
-  w.classList.toggle("hidden");
-};
-
-/* Mobile menu */
-const sidebar = document.getElementById("sidebar");
-const overlay = document.getElementById("overlay");
-function openMenu(){
-  if (!sidebar || !overlay) return;
-  sidebar.classList.add("open");
-  overlay.style.display = "block";
-}
-function closeMenu(){
-  if (!sidebar || !overlay) return;
-  sidebar.classList.remove("open");
-  overlay.style.display = "none";
-}
-document.getElementById("btnMenu")?.addEventListener("click", openMenu);
-overlay?.addEventListener("click", closeMenu);
-
-/* Init */
-window.onload = () => {
-  showView("dashboard");
-  loadDashboard();
-  setDetailEnabled(false);
-  setDetailMeta("No user selected");
-};
-
-/* Auto-refresh dashboard every 30s (only when dashboard tab is active) */
-setInterval(() => {
-  const active = document.querySelector(".tab.active")?.id || "";
-  if (active === "tab-dashboard") loadDashboard();
-}, 30000);
-
-/* Auto-refresh online every 15s (only when online tab is active) */
-setInterval(() => {
-  const active = document.querySelector(".tab.active")?.id || "";
-  if (active === "tab-online") loadOnline();
-}, 15000);
+loadDash();
 </script>
 
 </body>
