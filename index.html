@@ -16,7 +16,7 @@
     pre { white-space:pre-wrap; word-break:break-word; background:#0b1220; border:1px solid #223056; padding:12px; border-radius:10px; }
     .muted { color:#9bb0d0; font-size:12px; }
 
-    /* === UI v2 add-ons === */
+    /* === UI v2 === */
     .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0}
     .btn2{padding:8px 10px;border-radius:10px;border:1px solid #223056;background:#101c36;color:#e6eefc;cursor:pointer}
     .btn2:hover{background:#14224a}
@@ -39,6 +39,16 @@
     .split{display:grid;grid-template-columns: 1.1fr .9fr; gap:12px;}
     @media (max-width: 980px){ .split{grid-template-columns:1fr} }
     .danger { color:#ffb4b4; }
+
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #223056;
+      background:#101c36;
+      font-size:12px;
+      color:#e6eefc;
+    }
+    tr.selected { background:#14224a !important; }
   </style>
 </head>
 
@@ -52,7 +62,6 @@
       <span class="muted">Admin Panel</span>
     </div>
 
-    <!-- left nav stays simple -->
     <button class="btn active" id="nav-home">Admin</button>
 
     <div style="margin-top:12px" class="muted">
@@ -215,6 +224,8 @@ let ADMIN_SECRET = sessionStorage.getItem("ADMIN_SECRET");
 
 let usersOffset = 0;
 const usersLimit = 25;
+let lastUsersCount = 0;
+let selectedUid = null;
 
 function setStatus(txt) {
   const el = document.getElementById("statusText");
@@ -236,15 +247,24 @@ function requireSecret(force=false) {
   }
 }
 
-async function adminFetch(path) {
+async function adminFetch(path, retryOn401=true) {
   requireSecret();
+
   const res = await fetch(API_BASE + path, {
     method: "GET",
     headers: { "x-admin-secret": ADMIN_SECRET }
   });
 
-  // more helpful error output
   const txt = await res.text().catch(()=> "");
+
+  // if secret wrong, prompt once automatically then retry
+  if (res.status === 401 && retryOn401) {
+    try {
+      requireSecret(true);
+      return await adminFetch(path, false);
+    } catch {}
+  }
+
   if (!res.ok) throw new Error("Admin request failed: " + res.status + " " + txt);
   try { return JSON.parse(txt); } catch { return { ok:true, raw: txt }; }
 }
@@ -276,13 +296,13 @@ async function loadDashboard() {
     document.getElementById("kpiLevels").textContent = d.level_complete_count ?? "–";
 
     document.getElementById("dashboard").innerHTML =
-      "<pre class='mono'>" + JSON.stringify(out, null, 2) + "</pre>";
+      "<pre class='mono'>" + escapeHtml(JSON.stringify(out, null, 2)) + "</pre>";
 
     setStatus("OK");
   } catch (e) {
     console.error(e);
     document.getElementById("dashboard").innerHTML =
-      "<span class='danger'>Error: " + (e?.message || e) + "</span>";
+      "<span class='danger'>Error: " + escapeHtml(e?.message || String(e)) + "</span>";
     setStatus("Error");
   }
 }
@@ -292,16 +312,32 @@ async function loadDashboard() {
 ----------------------- */
 function userRowHTML(u) {
   const updated = (u.updated_at || "").toString().replace("T"," ").replace("Z","");
+  const uid = String(u.uid || "");
+  const isSel = selectedUid && selectedUid === uid;
   return `
-    <tr data-uid="${escapeHtml(u.uid || "")}">
+    <tr data-uid="${escapeHtml(uid)}" class="${isSel ? "selected" : ""}">
       <td>${escapeHtml(u.username || "")}</td>
-      <td class="mono">${escapeHtml(u.uid || "")}</td>
+      <td class="mono">${escapeHtml(uid)}</td>
       <td>${num(u.coins)}</td>
       <td>${num(u.free_skips_used)}</td>
       <td>${num(u.free_hints_used)}</td>
       <td class="muted">${escapeHtml(updated)}</td>
     </tr>
   `;
+}
+
+function setUsersMeta(count) {
+  const meta = document.getElementById("usersMeta");
+  if (!meta) return;
+
+  if (!count) {
+    meta.textContent = "0 users";
+    return;
+  }
+
+  const start = Math.min(count, usersOffset + 1);
+  const end = Math.min(count, usersOffset + usersLimit);
+  meta.textContent = `Showing ${start}–${end} of ${count}`;
 }
 
 async function loadUsers(reset=false) {
@@ -320,7 +356,14 @@ async function loadUsers(reset=false) {
 
     const out = await adminFetch(url);
     const rows = out?.rows || [];
-    const count = out?.count ?? 0;
+    const count = Number(out?.count ?? 0);
+    lastUsersCount = count;
+
+    // if offset too far, step back to last page and refetch
+    if (count > 0 && usersOffset >= count) {
+      usersOffset = Math.max(0, Math.floor((count - 1) / usersLimit) * usersLimit);
+      return loadUsers(false);
+    }
 
     const tbody = document.getElementById("usersTbody");
     if (!rows.length) {
@@ -329,14 +372,18 @@ async function loadUsers(reset=false) {
       tbody.innerHTML = rows.map(userRowHTML).join("");
     }
 
-    document.getElementById("usersMeta").textContent =
-      `Showing ${Math.min(count, usersOffset+1)}–${Math.min(count, usersOffset + usersLimit)} of ${count}`;
+    setUsersMeta(count);
 
     // row click -> load details
     tbody.querySelectorAll("tr[data-uid]").forEach(tr => {
       tr.addEventListener("click", async () => {
+        tbody.querySelectorAll("tr").forEach(x => x.classList.remove("selected"));
+        tr.classList.add("selected");
+
         const uid = tr.getAttribute("data-uid");
         if (!uid) return;
+
+        selectedUid = uid;
         await loadUserDetail(uid);
       });
     });
@@ -346,6 +393,7 @@ async function loadUsers(reset=false) {
     console.error(e);
     document.getElementById("usersTbody").innerHTML =
       `<tr><td colspan="6" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+    setUsersMeta(0);
     setStatus("Error");
   }
 }
@@ -389,10 +437,10 @@ function onlineRowHTML(r) {
 async function loadOnline() {
   try {
     setStatus("Loading online…");
-    const minutes = Number(document.getElementById("onlineMinutes").value || 5);
+    const minutes = Math.max(1, Number(document.getElementById("onlineMinutes").value || 5));
     const out = await adminFetch("/admin/online?minutes=" + encodeURIComponent(minutes) + "&limit=50&offset=0");
     const rows = out?.rows || [];
-    const count = out?.count ?? rows.length;
+    const count = Number(out?.count ?? rows.length);
 
     const tbody = document.getElementById("onlineTbody");
     if (!rows.length) {
@@ -407,6 +455,7 @@ async function loadOnline() {
     console.error(e);
     document.getElementById("onlineTbody").innerHTML =
       `<tr><td colspan="6" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+    document.getElementById("onlineMeta").textContent = "–";
     setStatus("Error");
   }
 }
@@ -444,7 +493,6 @@ document.getElementById("btn-refresh").onclick = () => {
 document.getElementById("btn-secret").onclick = () => {
   try {
     requireSecret(true);
-    // after changing secret, refresh current view
     document.getElementById("btn-refresh").click();
   } catch {}
 };
@@ -455,13 +503,18 @@ document.getElementById("btn-users-prev").onclick = () => {
   loadUsers(false);
 };
 document.getElementById("btn-users-next").onclick = () => {
+  if (lastUsersCount > 0 && usersOffset + usersLimit >= lastUsersCount) return;
   usersOffset = usersOffset + usersLimit;
   loadUsers(false);
 };
 
+document.getElementById("usersSearch").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loadUsers(true);
+});
+
 document.getElementById("btn-online-refresh").onclick = () => loadOnline();
 
-// load dashboard on open (will prompt for secret on first request)
+// load dashboard on open
 window.onload = () => {
   showView("dashboard");
   loadDashboard();
