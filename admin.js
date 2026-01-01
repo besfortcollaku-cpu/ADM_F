@@ -136,6 +136,7 @@ async function loadDashboard() {
     document.getElementById("dashboard").innerHTML =
       "<pre class='mono'>" + escapeHtml(JSON.stringify(out, null, 2)) + "</pre>";
 
+    await loadChartsFromStats(out);
     setStatus("OK");
   } catch (e) {
     console.error(e);
@@ -533,6 +534,139 @@ setInterval(() => {
   const active = document.querySelector(".tab.active")?.id || "";
   if (active === "tab-dashboard") loadDashboard();
 }, 30000);
+
+
+/* -----------------------
+   CHARTS (Dashboard)
+----------------------- */
+let _chartCoins = null;
+let _chartLogins = null;
+
+function setChartHint(id, msg){
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg || "";
+}
+
+function ensureChartJs(){
+  return new Promise((resolve) => {
+    if (window.Chart) return resolve(true);
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+
+/**
+ * Expected shapes (any of these work):
+ * 1) out.data.charts = { coins_growth:[{date, total}], daily_logins:[{date, count}] }
+ * 2) out.data.coins_growth / out.data.daily_logins as arrays above
+ * 3) Optional endpoint: GET /admin/charts?days=14 returning { coins_growth:[...], daily_logins:[...] }
+ */
+async function loadChartsFromStats(statsOut){
+  const days = 14;
+
+  const d = statsOut?.data || {};
+  let coins = d?.charts?.coins_growth || d?.coins_growth || null;
+  let logins = d?.charts?.daily_logins || d?.daily_logins || null;
+
+  if (!coins || !logins){
+    try{
+      const out = await adminFetch("/admin/charts?days=" + encodeURIComponent(days));
+      const cd = out?.data || out;
+      coins = coins || cd?.coins_growth || cd?.charts?.coins_growth || null;
+      logins = logins || cd?.daily_logins || cd?.charts?.daily_logins || null;
+    }catch(e){
+      // ignore if endpoint missing
+    }
+  }
+
+  if (!Array.isArray(coins) || coins.length === 0){
+    const total = Number(d?.coins_total ?? 0) || 0;
+    coins = Array.from({length: days}, (_,i)=>{
+      const dt = new Date();
+      dt.setDate(dt.getDate() - (days-1-i));
+      return { date: dt.toISOString().slice(0,10), total };
+    });
+    setChartHint("chartCoinsHint", "No coins history endpoint yet → showing flat line (uses current total).");
+  } else {
+    setChartHint("chartCoinsHint", "");
+  }
+
+  if (!Array.isArray(logins) || logins.length === 0){
+    logins = Array.from({length: days}, (_,i)=>{
+      const dt = new Date();
+      dt.setDate(dt.getDate() - (days-1-i));
+      return { date: dt.toISOString().slice(0,10), count: 0 };
+    });
+    setChartHint("chartLoginsHint", "No daily logins history endpoint yet → showing zeros.");
+  } else {
+    setChartHint("chartLoginsHint", "");
+  }
+
+  const ok = await ensureChartJs();
+  if (!ok){
+    setChartHint("chartCoinsHint", "Chart.js failed to load (CDN blocked).");
+    setChartHint("chartLoginsHint", "Chart.js failed to load (CDN blocked).");
+    return;
+  }
+
+  const coinsLabels = coins.map(x => String(x.date || x.day || x.t || "").slice(0,10));
+  const coinsValues = coins.map(x => Number(x.total ?? x.value ?? x.coins ?? 0) || 0);
+
+  const loginsLabels = logins.map(x => String(x.date || x.day || x.t || "").slice(0,10));
+  const loginsValues = logins.map(x => Number(x.count ?? x.value ?? x.logins ?? 0) || 0);
+
+  const c1 = document.getElementById("chartCoins");
+  const c2 = document.getElementById("chartLogins");
+  if (!c1 || !c2) return;
+
+  try { _chartCoins?.destroy(); } catch {}
+  try { _chartLogins?.destroy(); } catch {}
+
+  _chartCoins = new Chart(c1, {
+    type: "line",
+    data: {
+      labels: coinsLabels,
+      datasets: [{
+        label: "Total Coins",
+        data: coinsValues,
+        tension: 0.25,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  _chartLogins = new Chart(c2, {
+    type: "bar",
+    data: {
+      labels: loginsLabels,
+      datasets: [{
+        label: "Daily Logins",
+        data: loginsValues
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
 
 /* -----------------------
    ✅ MOBILE SIDEBAR TOGGLE (REPLACED)
