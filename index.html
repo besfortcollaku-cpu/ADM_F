@@ -1,247 +1,112 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Adventure Maze – Admin</title>
-  <link rel="stylesheet" href="admin.css">
-</head>
 
+  <link rel="stylesheet" href="admin.css"/>
+</head>
 <body>
 
-<!-- ✅ Mobile topbar -->
-<div class="topbar">
-  <button class="hamburger" id="btnMenu">☰ Menu</button>
-  <div class="pill" id="statusTextTop">Idle</div>
-</div>
-
-<div class="overlay" id="overlay"></div>
+<div id="overlay"></div>
 
 <div class="app">
-
   <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
+  <aside id="sidebar" class="sidebar">
     <div class="brand">
-      Adventure Maze<br/>
-      <span class="muted">Admin Panel</span>
+      Adventure Maze
+      <span>Admin Panel</span>
     </div>
 
-    <button class="btn active" id="nav-home">Admin</button>
-
-    <div style="margin-top:12px" class="muted">
-      Tip: secret is saved in sessionStorage (this tab only).
-    </div>
-  </div>
+    <button id="tab-dashboard" class="tab active">Dashboard</button>
+    <button id="tab-users" class="tab">Users</button>
+    <button id="tab-online" class="tab">Online</button>
+  </aside>
 
   <!-- MAIN -->
-  <div class="main">
-    <div class="toolbar">
-      <div class="tabs">
-        <button class="tab active" id="tab-dashboard">Dashboard</button>
-        <button class="tab" id="tab-users">Users</button>
-        <button class="tab" id="tab-online">Online</button>
+  <main class="main">
+    <header class="topbar">
+      <button id="btnMenu" class="menu">☰</button>
+      <div id="statusTextTop" class="status">Ready</div>
+      <div class="actions">
+        <button id="btn-refresh">Refresh</button>
+        <button id="btn-secret">Secret</button>
       </div>
+    </header>
 
-      <div class="right" style="margin-left:auto">
-        <span class="muted">Status:</span>
-        <span id="statusText" class="pill">Idle</span>
-        <button class="btn2" id="btn-refresh">Refresh</button>
-        <button class="btn2" id="btn-secret">Change secret</button>
-      </div>
-    </div>
-
-    <!-- DASHBOARD VIEW -->
+    <!-- DASHBOARD -->
     <section id="view-dashboard">
-      <h2 style="margin:8px 0 0 0">Dashboard</h2>
-
-      <div class="grid">
-        <div class="card">
-          <div class="kpi-title">Total Users</div>
-          <div class="kpi-value" id="kpiUsers">–</div>
-          <div class="kpi-sub">Registered users in DB</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Total Coins</div>
-          <div class="kpi-value" id="kpiCoins">–</div>
-          <div class="kpi-sub">Sum of user coins</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Online Now</div>
-          <div class="kpi-value" id="kpiOnline">–</div>
-          <div class="kpi-sub">Seen in last N minutes</div>
-        </div>
-
-        <div class="card">
-          <div class="kpi-title">Ad +50 Claims</div>
-          <div class="kpi-value" id="kpiAdCount">–</div>
-          <div class="kpi-sub">Count of reward_claims type=ad_50</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Daily Logins</div>
-          <div class="kpi-value" id="kpiDailyCount">–</div>
-          <div class="kpi-sub">Count of daily_login claims</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Levels Completed</div>
-          <div class="kpi-value" id="kpiLevels">–</div>
-          <div class="kpi-sub">Rows in level_rewards</div>
-        </div>
-      </div>
-
-      
-      <div class="card">
-        <div class="hrow" style="margin-bottom:10px">
-          <h3 style="margin:0">Charts</h3>
-          <span class="spacer"></span>
-          <span class="muted">Last 14 days</span>
-        </div>
-        <div class="chartsGrid">
-          <div class="chartCard">
-            <div class="muted" style="margin-bottom:8px">Coins Growth</div>
-            <canvas id="chartCoins" height="140"></canvas>
-            <div class="muted mini" id="chartCoinsHint" style="margin-top:8px"></div>
-          </div>
-          <div class="chartCard">
-            <div class="muted" style="margin-bottom:8px">Daily Logins</div>
-            <canvas id="chartLogins" height="140"></canvas>
-            <div class="muted mini" id="chartLoginsHint" style="margin-top:8px"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin:0 0 10px 0">Raw</h3>
-        <div id="dashboard">Loading…</div>
-      </div>
+      <h2>Dashboard</h2>
+      <div id="dashboard" class="card">Loading…</div>
     </section>
 
-    <!-- USERS VIEW -->
+    <!-- USERS -->
     <section id="view-users" class="hidden">
-      <h2 style="margin:8px 0 0 0">Users</h2>
+      <h2>Users</h2>
 
       <div class="toolbar">
-        <input id="usersSearch" placeholder="Search username or uid…" style="min-width:260px"/>
-        <select id="usersOrder">
-          <option value="updated_at_desc">Order: Updated</option>
-          <option value="coins_desc">Order: Coins</option>
-          <option value="created_at_desc">Order: Created</option>
-        </select>
-        <button class="btn2" id="btn-users-search">Search</button>
-
-        <div class="right" style="margin-left:auto">
-          <button class="btn2" id="btn-users-prev">Prev</button>
-          <button class="btn2" id="btn-users-next">Next</button>
-          <span class="muted" id="usersMeta">–</span>
-        </div>
+        <input id="usersSearch" placeholder="Search username or UID"/>
+        <button id="btn-users-search">Search</button>
+        <span id="usersMeta" class="meta"></span>
       </div>
 
-      <div class="split">
-        <div class="card">
-          <h3 style="margin:0 0 10px 0">List</h3>
-          <div class="tableWrap">
-            <table class="table" id="usersTable">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>UID</th>
-                  <th>Coins</th>
-                  <th>Skips</th>
-                  <th>Hints</th>
-                  <th>Updated</th>
-                </tr>
-              </thead>
-              <tbody id="usersTbody">
-                <tr><td colspan="6" class="muted">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div class="table-wrap">
+        <table class="users">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th class="uid">UID</th>
+              <th>Coins</th>
+              <th>Skips</th>
+              <th>Hints</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="usersTbody"></tbody>
+        </table>
+      </div>
 
-        <div class="card">
-          <div class="hrow">
-            <h3 style="margin:0">User Detail</h3>
-            <span class="spacer"></span>
-            <span class="pill" id="detailMeta">No user selected</span>
-            <button class="btn3 mini" id="btn-copy-uid" disabled>Copy UID</button>
-            <button class="btn3 mini" id="btn-copy-username" disabled>Copy Username</button>
-          </div>
+      <div class="pager">
+        <button id="btn-users-prev">← Prev</button>
+        <button id="btn-users-next">Next →</button>
+      </div>
 
-          <div class="divider"></div>
-
-          <div id="userDetail" class="muted">Click a user row to load details.</div>
-
-          <div class="divider"></div>
-
-          <div class="hrow" style="margin-bottom:10px">
-            <span class="muted">Coins:</span>
-            <input id="coinsDelta" type="number" placeholder="+50 / -50" style="width:130px" disabled />
-            <button class="btn3 btnOk" id="btn-coins-add" disabled>Add/Sub</button>
-
-            <span class="spacer"></span>
-
-            <input id="coinsSet" type="number" placeholder="Set exact" style="width:140px" disabled />
-            <button class="btn3 btnOk" id="btn-coins-set" disabled>Set</button>
-          </div>
-
-          <div class="hrow">
-            <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset coins = 0</button>
-            <button class="btn3 btnDanger" id="btn-reset-free" disabled>Reset free skips/hints</button>
-            <span class="spacer"></span>
-            <button class="btn3" id="btn-detail-refresh" disabled>Refresh detail</button>
-          </div>
-
-          <div class="muted" style="margin-top:10px">
-            Note: coins actions require backend admin endpoints:
-            <span class="mono">POST /admin/users/:uid/coins/*</span> and <span class="mono">POST /admin/users/:uid/reset-free</span>
-          </div>
-        </div>
+      <div id="userDetail" class="card muted">
+        Click a user row to load details.
       </div>
     </section>
 
-    <!-- ONLINE VIEW -->
+    <!-- ONLINE -->
     <section id="view-online" class="hidden">
-      <h2 style="margin:8px 0 0 0">Online</h2>
+      <h2>Online Users</h2>
 
       <div class="toolbar">
-        <span class="muted">Minutes window:</span>
-        <input id="onlineMinutes" type="number" min="1" value="5" style="width:90px"/>
-        <button class="btn2" id="btn-online-refresh">Refresh</button>
-        <span class="pill" id="onlineAuto">Auto: OFF</span>
-
-        <div class="right" style="margin-left:auto">
-          <span class="muted" id="onlineMeta">–</span>
-        </div>
+        <input id="onlineMinutes" type="number" value="5" min="1"/>
+        <button id="btn-online-refresh">Refresh</button>
+        <span id="onlineMeta" class="meta"></span>
       </div>
 
-      <div class="card">
-        <div class="muted" style="margin-bottom:10px">
-          Online users appear only if the game calls <span class="mono">/api/session/start</span> and keeps sending <span class="mono">/api/session/ping</span>.
-        </div>
-        <h3 style="margin:0 0 10px 0">Sessions</h3>
-        <div class="tableWrap">
-          <table class="table" id="onlineTable">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>UID</th>
-                <th>Coins</th>
-                <th>Last Seen</th>
-                <th>Started</th>
-                <th>User Agent</th>
-              </tr>
-            </thead>
-            <tbody id="onlineTbody">
-              <tr><td colspan="6" class="muted">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th class="uid">UID</th>
+              <th>Coins</th>
+              <th>Last Seen</th>
+              <th>Started</th>
+              <th>Agent</th>
+            </tr>
+          </thead>
+          <tbody id="onlineTbody"></tbody>
+        </table>
       </div>
     </section>
-
-  </div>
+  </main>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="toast"></div>
 
 <script src="admin.js"></script>
 </body>
