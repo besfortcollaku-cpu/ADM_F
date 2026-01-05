@@ -168,3 +168,91 @@ tr.selected { background:#14224a !important; }
 @media (max-width: 980px){
   .chartsGrid{ grid-template-columns:1fr; }
 }
+
+/* =========================
+   UI polish pack
+========================= */
+
+:root{
+  --shadow: 0 12px 30px rgba(0,0,0,.35);
+  --radius: 16px;
+}
+
+/* smoother font + better text rendering */
+body{
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* main container breathing space */
+.main{
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* cards look more premium */
+.card{
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* toolbar feels like a bar */
+.toolbar{
+  background: rgba(15,26,51,.55);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  backdrop-filter: blur(10px);
+}
+
+/* tabs more “app-like” */
+.tab{
+  font-weight: 700;
+}
+
+/* KPI cards alignment */
+.kpi-value{
+  letter-spacing: -0.5px;
+}
+
+/* better tables */
+.tableWrap{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+
+.table{
+  min-width: 860px; /* prevents squish */
+}
+
+.table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(16,28,54,.95);
+  backdrop-filter: blur(6px);
+}
+
+/* row hover + selected stronger */
+.table tr:hover{ background:#0f2147; }
+tr.selected{ background:#1a3570 !important; }
+
+/* nicer inputs */
+input, select{
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* charts layout */
+.charts{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+@media (max-width: 980px){
+  .charts{ grid-template-columns: 1fr; }
+  .table{ min-width: 720px; }
+}
