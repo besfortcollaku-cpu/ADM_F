@@ -124,6 +124,7 @@ async function loadDashboard() {
   try {
     setStatus("Loading dashboard…");
     const out = await adminFetch("/admin/stats");
+    loadCharts();
 
     const d = out?.data || {};
     document.getElementById("kpiUsers").textContent = d.users_total ?? "–";
@@ -700,3 +701,67 @@ document.getElementById("sidebar")?.addEventListener("click", (e) => {
 window.addEventListener("resize", () => {
   if (window.innerWidth > 980) closeSidebar();
 });
+
+/* =========================
+   CHARTS
+========================= */
+
+let coinsChart, usersChart;
+
+async function loadCharts() {
+  try {
+    const coinsRes = await adminFetch("/admin/charts/coins");
+    const usersRes = await adminFetch("/admin/charts/active-users");
+
+    renderCoinsChart(coinsRes);
+    renderUsersChart(usersRes);
+  } catch (e) {
+    console.error("Chart error:", e.message);
+  }
+}
+
+function renderCoinsChart(data) {
+  const ctx = document.getElementById("coinsChart");
+  if (!ctx) return;
+
+  if (coinsChart) coinsChart.destroy();
+
+  coinsChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: data.map(d => d.day),
+      datasets: [{
+        label: "Coins",
+        data: data.map(d => d.coins),
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderUsersChart(data) {
+  const ctx = document.getElementById("usersChart");
+  if (!ctx) return;
+
+  if (usersChart) usersChart.destroy();
+
+  usersChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.day),
+      datasets: [{
+        label: "Active Users",
+        data: data.map(d => d.active_users)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+}
