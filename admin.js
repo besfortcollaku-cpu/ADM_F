@@ -18,6 +18,15 @@ function setStatus(txt) {
   const el2 = document.getElementById("statusTextTop");
   if (el2) el2.textContent = t;
 }
+function setStatusTone(kind){
+  const el = document.getElementById("statusText");
+  const el2 = document.getElementById("statusTextTop");
+  [el, el2].forEach(x=>{
+    if(!x) return;
+    x.style.borderColor = kind==="ok" ? "#2a57b8" : kind==="err" ? "#5a2330" : "#223056";
+    x.style.background = kind==="ok" ? "#17305f" : kind==="err" ? "#1a0f12" : "#101c36";
+  });
+}
 
 function setDetailMeta(txt) {
   const el = document.getElementById("detailMeta");
