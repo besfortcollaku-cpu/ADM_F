@@ -343,3 +343,58 @@ tr.selected{ background:#1a3570 !important; }
 @media (min-width: 1100px){
   .grid{ grid-template-columns: repeat(4, minmax(220px, 1fr)) !important; }
 }
+
+/* ======================================
+   STEP 1 – KPI layout & spacing polish
+====================================== */
+
+/* responsive KPI grid */
+@media (min-width: 900px){
+  .grid{
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+@media (max-width: 899px){
+  .grid{
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+}
+
+/* compact KPI cards */
+.card{
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25);
+}
+
+/* tighter KPI text */
+.kpi-title{
+  font-size: 12px !important;
+  letter-spacing: 0.3px;
+  color: #9fb6d1;
+}
+.kpi-value{
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  margin-top: 2px !important;
+}
+.kpi-sub{
+  font-size: 11px !important;
+  opacity: 0.75;
+  margin-top: 1px !important;
+}
+
+/* reduce top/bottom gap */
+h2{
+  margin: 6px 0 8px 0 !important;
+}
+
+/* shrink Refresh/Secret buttons a bit */
+.btn2, .btn3, .tab{
+  padding: 6px 10px !important;
+  font-size: 13px !important;
+}
