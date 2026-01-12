@@ -521,10 +521,15 @@ document.getElementById("btn-user-delete").onclick = async () => {
     setStatus("Deleting user…");
     toast("Deleting user…");
 
-    await adminSend(
-      "DELETE",
-      "/admin/users/" + encodeURIComponent(selectedUid)
-    );
+   await fetch(
+  `https://adventuremaze.onrender.com/admin/users/${selectedUid}`,
+  {
+    method: "DELETE",
+    headers: {
+      "x-admin-secret": ADMIN_SECRET
+    }
+  }
+);
 
     // reset UI
     selectedUid = null;
