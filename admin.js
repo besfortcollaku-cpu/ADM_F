@@ -159,8 +159,16 @@ async function loadDashboard() {
 /* USERS */
 function setDetailEnabled(on) {
   const ids = [
-    "btn-copy-uid","btn-copy-username","coinsDelta","btn-coins-add","coinsSet","btn-coins-set",
-    "btn-coins-reset","btn-reset-free","btn-detail-refresh"
+    "btn-copy-uid",
+    "btn-copy-username",
+    "coinsDelta",
+    "btn-coins-add",
+    "coinsSet",
+    "btn-coins-set",
+    "btn-coins-reset",
+    "btn-reset-free",
+    "btn-detail-refresh",
+    "btn-user-delete"
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -493,6 +501,43 @@ document.getElementById("btn-reset-free").onclick = async () => {
     await refreshUsersAndDetail();
     setStatus("OK");
     toast("Free counters reset");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-user-delete").onclick = async () => {
+  if (!selectedUid) return;
+
+  const username = selectedUser?.user?.username || selectedUid;
+
+  const ok = confirm(
+    `⚠️ DELETE USER\n\n${username}\n\nThis cannot be undone.\n\nContinue?`
+  );
+  if (!ok) return;
+
+  try {
+    setStatus("Deleting user…");
+    toast("Deleting user…");
+
+    await adminSend(
+      "DELETE",
+      "/admin/users/" + encodeURIComponent(selectedUid)
+    );
+
+    // reset UI
+    selectedUid = null;
+    selectedUser = null;
+    setDetailEnabled(false);
+    document.getElementById("userDetail").innerHTML =
+      `<div class="muted">User deleted.</div>`;
+    setDetailMeta("No user selected");
+
+    await loadUsers(true);
+
+    setStatus("OK");
+    toast("User deleted");
   } catch (e) {
     alert(e?.message || String(e));
     setStatus("Error");
