@@ -510,7 +510,8 @@ document.getElementById("btn-reset-free").onclick = async () => {
 document.getElementById("btn-user-delete").onclick = async () => {
   if (!selectedUid) return;
 
-  const username = selectedUser?.user?.username || selectedUid;
+  const username =
+    selectedUser?.user?.username || selectedUid;
 
   const ok = confirm(
     `⚠️ DELETE USER\n\n${username}\n\nThis cannot be undone.\n\nContinue?`
@@ -518,19 +519,24 @@ document.getElementById("btn-user-delete").onclick = async () => {
   if (!ok) return;
 
   try {
-    setStatus("Deleting user…");
-    toast("Deleting user…");
+    setStatus("Deleting user...");
+    toast("Deleting user...");
 
-   await fetch(
-  `https://adventuremaze.onrender.com/admin/users/${selectedUid}`,
-  {
-    method: "DELETE",
-    headers: {
-      "x-admin-secret": ADMIN_SECRET
-    }
+    await fetch(`${API_BASE}/admin/users/${selectedUid}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": "Bearer " + adminToken
+      }
+    });
+
+    toast("User deleted");
+    setStatus("OK");
+    refreshUsers();
+  } catch (e) {
+    alert(e.message || String(e));
+    setStatus("Error");
   }
-);
-
+};
     // reset UI
     selectedUid = null;
     selectedUser = null;
