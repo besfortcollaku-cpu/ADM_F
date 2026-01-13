@@ -523,11 +523,11 @@ document.getElementById("btn-user-delete").onclick = async () => {
     toast("Deleting user...");
 
     await fetch(`${API_BASE}/admin/users/${selectedUid}`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": "Bearer " + adminToken
-      }
-    });
+  method: "DELETE",
+  headers: {
+    "Authorization": "Bearer " + adminToken
+  }
+});
 
     toast("User deleted");
     setStatus("OK");
