@@ -510,9 +510,7 @@ document.getElementById("btn-reset-free").onclick = async () => {
 document.getElementById("btn-user-delete").onclick = async () => {
   if (!selectedUid) return;
 
-  const username =
-    selectedUser?.user?.username || selectedUid;
-
+  const username = selectedUser?.user?.username || selectedUid;
   const ok = confirm(
     `⚠️ DELETE USER\n\n${username}\n\nThis cannot be undone.\n\nContinue?`
   );
@@ -522,20 +520,11 @@ document.getElementById("btn-user-delete").onclick = async () => {
     setStatus("Deleting user...");
     toast("Deleting user...");
 
-    await fetch(`${API_BASE}/admin/users/${selectedUid}`, {
-  method: "DELETE",
-  headers: {"x-admin-secret": ADMIN_SECRET 
-  }
-});
+    await fetch(`${API_BASE}/admin/users/${encodeURIComponent(selectedUid)}`, {
+      method: "DELETE",
+      headers: { "x-admin-secret": ADMIN_SECRET }
+    });
 
-    toast("User deleted");
-    setStatus("OK");
-    refreshUsers();
-  } catch (e) {
-    alert(e.message || String(e));
-    setStatus("Error");
-  }
-};
     // reset UI
     selectedUid = null;
     selectedUser = null;
