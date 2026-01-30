@@ -1,4 +1,4 @@
-const API_BASE = "https://adventuremaze.onrender.com";
+const API_BASE = "https://triumphant-gentleness-production.up.railway.app";
 let ADMIN_SECRET = sessionStorage.getItem("ADMIN_SECRET");
 
 let usersOffset = 0;
