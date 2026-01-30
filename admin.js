@@ -524,8 +524,7 @@ document.getElementById("btn-user-delete").onclick = async () => {
 
     await fetch(`${API_BASE}/admin/users/${selectedUid}`, {
   method: "DELETE",
-  headers: {
-    "Authorization": "Bearer " + adminToken
+  headers: {"x-admin-secret": ADMIN_SECRET 
   }
 });
 
