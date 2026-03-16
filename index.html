@@ -40,6 +40,7 @@
         <button class="tab active" id="tab-dashboard">Dashboard</button>
         <button class="tab" id="tab-users">Users</button>
         <button class="tab" id="tab-online">Online</button>
+        <button class="tab" id="tab-payouts">Payouts</button>
       </div>
 
       <div class="right" style="margin-left:auto">
@@ -217,6 +218,85 @@
       </div>
     </section>
 
+
+    <!-- PAYOUTS VIEW -->
+    <section id="view-payouts" class="hidden">
+      <h2 style="margin:8px 0 0 0">Monthly Pi Payouts</h2>
+
+      <div class="card">
+        <div class="hrow" style="margin-bottom:10px">
+          <div class="muted">Month key</div>
+          <input id="payoutMonthKey" placeholder="YYYY-MM" style="width:110px"/>
+          <div class="muted">Rate</div>
+          <input id="payoutRate" type="number" step="0.00000001" min="0" placeholder="0.01" style="width:120px"/>
+          <div class="muted">Threshold Pi</div>
+          <input id="payoutThreshold" type="number" step="0.00000001" min="0" placeholder="0.1" style="width:120px"/>
+          <span class="spacer"></span>
+          <button class="btn2" id="btn-payout-close">Close Month</button>
+          <button class="btn2" id="btn-payout-generate">Generate Payouts</button>
+          <button class="btn2" id="btn-payout-run-worker">Run Worker</button>
+          <button class="btn2" id="btn-payout-refresh">Refresh</button>
+        </div>
+
+        <div class="hrow">
+          <span class="pill" id="payoutSimulation">Simulation: –</span>
+          <span class="muted" id="payoutLastRefresh">Last refresh: –</span>
+          <span class="spacer"></span>
+          <span class="pill" id="payoutActionState">Idle</span>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="card">
+          <h3 style="margin:0 0 10px 0">Current / Recent Cycles</h3>
+          <div class="tableWrap">
+            <table class="table" id="payoutCyclesTable">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Rate</th>
+                  <th>Threshold</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Closed</th>
+                </tr>
+              </thead>
+              <tbody id="payoutCyclesTbody">
+                <tr><td colspan="6" class="muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 10px 0">Snapshot Summary</h3>
+          <div id="payoutSummary" class="muted">Loading…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 10px 0">Payout Jobs</h3>
+        <div class="tableWrap">
+          <table class="table" id="payoutJobsTable">
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>Payout Pi</th>
+                <th>Status</th>
+                <th>TXID</th>
+                <th>Attempts</th>
+                <th>Error</th>
+                <th>Created</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody id="payoutJobsTbody">
+              <tr><td colspan="8" class="muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
     <!-- ONLINE VIEW -->
     <section id="view-online" class="hidden">
       <h2 style="margin:8px 0 0 0">Online</h2>
@@ -265,3 +345,5 @@
 <script src="admin.js"></script>
 </body>
 </html>
+
+

@@ -398,3 +398,20 @@ h2{
   padding: 6px 10px !important;
   font-size: 13px !important;
 }
+/* Payout status badges */
+.status-badge{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid var(--border2);
+  font-size:12px;
+  line-height:1;
+}
+.status-queued{ background:#1a2d57; border-color:#2d4e93; color:#d9e7ff; }
+.status-processing{ background:#3b2c12; border-color:#6d4d17; color:#ffe3b1; }
+.status-paid{ background:#13351f; border-color:#1f6b3e; color:#c9ffd8; }
+.status-failed{ background:#3a1620; border-color:#7a2438; color:#ffd1da; }
+.status-open{ background:#2a2a2a; border-color:#4a4a4a; color:#f0f0f0; }
+.status-closed{ background:#143049; border-color:#22567f; color:#d4eeff; }
+.status-payouts_generated{ background:#162f34; border-color:#25626f; color:#d4f7ff; }
+.status-completed{ background:#173620; border-color:#2a7e44; color:#cfffda; }

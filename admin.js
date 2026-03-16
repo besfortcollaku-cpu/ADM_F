@@ -9,6 +9,9 @@ let selectedUser = null; // cache from /admin/users/:uid response
 
 let onlineTimer = null;
 
+let payoutLoading = false;
+let payoutLastRefreshAt = null;
+
 function nowTime() { return new Date().toLocaleTimeString(); }
 
 function setStatus(txt) {
@@ -408,6 +411,169 @@ async function refreshUsersAndDetail() {
   if (selectedUid) await loadUserDetail(selectedUid);
 }
 
+
+/* PAYOUTS */
+function statusBadge(status) {
+  const s = String(status || "").toLowerCase();
+  const cls = ["status-badge", "status-" + s.replace(/\s+/g, "_")].join(" ");
+  return `<span class="${cls}">${escapeHtml(status || "-")}</span>`;
+}
+
+function formatIso(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return String(ts);
+  return d.toLocaleString();
+}
+
+function setPayoutActionState(text, tone) {
+  const el = document.getElementById("payoutActionState");
+  if (!el) return;
+  el.textContent = text;
+  if (tone === "ok") {
+    el.style.background = "#17305f";
+    el.style.borderColor = "#2a57b8";
+  } else if (tone === "err") {
+    el.style.background = "#1a0f12";
+    el.style.borderColor = "#5a2330";
+  } else {
+    el.style.background = "var(--panel2)";
+    el.style.borderColor = "var(--border2)";
+  }
+}
+
+function setPayoutLoading(on) {
+  payoutLoading = !!on;
+  ["btn-payout-close", "btn-payout-generate", "btn-payout-run-worker", "btn-payout-refresh"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!on;
+  });
+}
+
+function renderPayoutCycles(rows) {
+  const tbody = document.getElementById("payoutCyclesTbody");
+  if (!tbody) return;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No payout cycles yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.month_key || "-")}</td>
+      <td>${escapeHtml(String(r.conversion_rate_locked ?? "-"))}</td>
+      <td>${escapeHtml(String(r.min_payout_threshold_pi ?? "-"))}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="muted">${escapeHtml(formatIso(r.created_at))}</td>
+      <td class="muted">${escapeHtml(formatIso(r.closed_at))}</td>
+    </tr>
+  `).join("");
+}
+
+function renderPayoutSummary(summary) {
+  const el = document.getElementById("payoutSummary");
+  if (!el) return;
+  if (!summary) {
+    el.innerHTML = `<div class="muted">No summary yet.</div>`;
+    return;
+  }
+
+  const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(String(value ?? 0))}</span></div>`;
+  el.innerHTML = [
+    item("Total users snapshotted", summary.total_users_snapshotted),
+    item("Eligible", summary.eligible_count),
+    item("Below threshold", summary.below_threshold_count),
+    item("Queued", summary.queued_count),
+    item("Paid", summary.paid_count),
+    item("Failed", summary.failed_count),
+    item("Total payout Pi amount", summary.total_payout_pi_amount),
+  ].join("");
+}
+
+function renderPayoutJobs(rows) {
+  const tbody = document.getElementById("payoutJobsTbody");
+  if (!tbody) return;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">No payout jobs yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="mono">${escapeHtml(r.uid || "-")}</td>
+      <td>${escapeHtml(String(r.payout_pi_amount ?? "0"))}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="mono">${escapeHtml(r.txid || "-")}</td>
+      <td>${escapeHtml(String(r.attempts ?? 0))}</td>
+      <td class="mono">${escapeHtml(r.error_message || "-")}</td>
+      <td class="muted">${escapeHtml(formatIso(r.created_at))}</td>
+      <td class="muted">${escapeHtml(formatIso(r.updated_at))}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadPayouts() {
+  if (payoutLoading) return;
+  setPayoutLoading(true);
+  setPayoutActionState("Loading...", "idle");
+  try {
+    const monthKey = (document.getElementById("payoutMonthKey")?.value || "").trim();
+
+    const [cfg, cycles, summary, jobs] = await Promise.all([
+      adminFetch("/admin/payouts/config"),
+      adminFetch("/admin/payouts/cycles?limit=6"),
+      adminFetch("/admin/payouts/summary" + (monthKey ? ("?month_key=" + encodeURIComponent(monthKey)) : "")),
+      adminFetch("/admin/payouts/jobs" + (monthKey ? ("?month_key=" + encodeURIComponent(monthKey)) : "")),
+    ]);
+
+    const simulation = !!cfg?.simulation_mode;
+    const simEl = document.getElementById("payoutSimulation");
+    if (simEl) {
+      simEl.textContent = "Simulation: " + (simulation ? "ON" : "OFF");
+      simEl.style.borderColor = simulation ? "#2a57b8" : "#5a2330";
+      simEl.style.background = simulation ? "#17305f" : "#1a0f12";
+    }
+
+    renderPayoutCycles(cycles?.rows || []);
+    renderPayoutSummary(summary?.summary || null);
+    renderPayoutJobs(jobs?.rows || []);
+
+    payoutLastRefreshAt = new Date();
+    const last = document.getElementById("payoutLastRefresh");
+    if (last) last.textContent = "Last refresh: " + payoutLastRefreshAt.toLocaleString();
+
+    setPayoutActionState("Ready", "ok");
+    setStatus("Payouts loaded");
+    setStatusTone("ok");
+  } catch (e) {
+    setPayoutActionState("Error", "err");
+    setStatus("Payouts error");
+    setStatusTone("err");
+    toast("Payouts load failed: " + (e?.message || String(e)), 3000);
+  } finally {
+    setPayoutLoading(false);
+  }
+}
+
+async function payoutAction(actionName, confirmText, run) {
+  if (payoutLoading) return;
+  if (confirmText && !confirm(confirmText)) return;
+
+  setPayoutLoading(true);
+  setPayoutActionState(actionName + "...", "idle");
+
+  try {
+    await run();
+    toast(actionName + " successful");
+    setPayoutActionState(actionName + " done", "ok");
+    await loadPayouts();
+  } catch (e) {
+    setPayoutActionState(actionName + " failed", "err");
+    toast(actionName + " failed: " + (e?.message || String(e)), 3200);
+  } finally {
+    setPayoutLoading(false);
+  }
+}
 /* DETAIL ACTIONS (unchanged) */
 async function copyText(text, okMsg) {
   try {
@@ -547,11 +713,13 @@ document.getElementById("btn-user-delete").onclick = async () => {
 document.getElementById("tab-dashboard").onclick = () => { showView("dashboard"); loadDashboard(); };
 document.getElementById("tab-users").onclick = () => { showView("users"); loadUsers(true); };
 document.getElementById("tab-online").onclick = () => { showView("online"); loadOnline(); };
+document.getElementById("tab-payouts").onclick = () => { showView("payouts"); loadPayouts(); };
 
 document.getElementById("btn-refresh").onclick = () => {
   const active = document.querySelector(".tab.active")?.id || "tab-dashboard";
   if (active === "tab-users") loadUsers(false);
   else if (active === "tab-online") loadOnline();
+  else if (active === "tab-payouts") loadPayouts();
   else loadDashboard();
 };
 
@@ -577,7 +745,53 @@ document.getElementById("usersSearch").addEventListener("keydown", (e) => {
 
 document.getElementById("btn-online-refresh").onclick = () => loadOnline();
 
+document.getElementById("btn-payout-refresh").onclick = () => loadPayouts();
+
+document.getElementById("btn-payout-close").onclick = async () => {
+  const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
+  const conversion_rate_locked = Number(document.getElementById("payoutRate")?.value);
+  const min_payout_threshold_pi = Number(document.getElementById("payoutThreshold")?.value || 0);
+
+  if (!month_key) return alert("Month key required (YYYY-MM)");
+  if (!Number.isFinite(conversion_rate_locked) || conversion_rate_locked < 0) return alert("Valid conversion rate required");
+  if (!Number.isFinite(min_payout_threshold_pi) || min_payout_threshold_pi < 0) return alert("Valid threshold required");
+
+  await payoutAction(
+    "Close Month",
+    `Close month ${month_key}? This locks rate and snapshots user monthly payouts.`,
+    () => adminSend("POST", "/admin/month-close", { month_key, conversion_rate_locked, min_payout_threshold_pi })
+  );
+};
+
+document.getElementById("btn-payout-generate").onclick = async () => {
+  const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
+  if (!month_key) return alert("Month key required (YYYY-MM)");
+
+  await payoutAction(
+    "Generate Payouts",
+    `Generate payout jobs for ${month_key}?`,
+    () => adminSend("POST", "/admin/payouts/generate", { month_key })
+  );
+};
+
+document.getElementById("btn-payout-run-worker").onclick = async () => {
+  await payoutAction(
+    "Run Worker",
+    "Run payout worker now? This will process queued payout jobs.",
+    () => adminSend("POST", "/admin/payouts/worker/run", { limit: 50 })
+  );
+};
+
 window.onload = () => {
+  const now = new Date();
+  const monthKey = now.getUTCFullYear() + "-" + String(now.getUTCMonth() + 1).padStart(2, "0");
+  const monthEl = document.getElementById("payoutMonthKey");
+  if (monthEl && !monthEl.value) monthEl.value = monthKey;
+  const rateEl = document.getElementById("payoutRate");
+  if (rateEl && !rateEl.value) rateEl.value = "0.01";
+  const thEl = document.getElementById("payoutThreshold");
+  if (thEl && !thEl.value) thEl.value = "0.1";
+
   showView("dashboard");
   loadDashboard();
   setDetailEnabled(false);
@@ -818,3 +1032,10 @@ function renderUsersChart(data) {
     }
   });
 }
+
+
+
+
+
+
+
