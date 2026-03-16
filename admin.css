@@ -415,3 +415,24 @@ h2{
 .status-closed{ background:#143049; border-color:#22567f; color:#d4eeff; }
 .status-payouts_generated{ background:#162f34; border-color:#25626f; color:#d4f7ff; }
 .status-completed{ background:#173620; border-color:#2a7e44; color:#cfffda; }
+
+/* Payout audit colors per requirement */
+.status-queued{ background:#2a2f3a !important; border-color:#595f6b !important; color:#eceff5 !important; }
+.status-processing{ background:#173c7a !important; border-color:#2f68c6 !important; color:#e0eeff !important; }
+.status-paid{ background:#174a2d !important; border-color:#2d8c57 !important; color:#d8ffe9 !important; }
+.status-failed{ background:#5a1d28 !important; border-color:#b33d55 !important; color:#ffdfe6 !important; }
+
+/* Payout rows/details */
+.payout-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+.payout-row-detail td{ background:#0d162b; border-top:0; }
+.payout-error-box{ white-space:pre-wrap; word-break:break-word; margin:0; }
+
+/* Mobile friendly payout controls/tables */
+@media (max-width: 980px){
+  .payout-toolbar .btn2,
+  .payout-filters .btn2{ width:100%; }
+  .payout-toolbar input,
+  .payout-filters input,
+  .payout-filters select{ width:100% !important; min-width:0 !important; }
+  #payoutCyclesTable, #payoutJobsTable{ min-width:980px; }
+}

@@ -224,7 +224,7 @@
       <h2 style="margin:8px 0 0 0">Monthly Pi Payouts</h2>
 
       <div class="card">
-        <div class="hrow" style="margin-bottom:10px">
+        <div class="hrow payout-toolbar" style="margin-bottom:10px">
           <div class="muted">Month key</div>
           <input id="payoutMonthKey" placeholder="YYYY-MM" style="width:110px"/>
           <div class="muted">Rate</div>
@@ -240,6 +240,7 @@
 
         <div class="hrow">
           <span class="pill" id="payoutSimulation">Simulation: –</span>
+          <span class="pill" id="payoutModeBanner">Mode: –</span>
           <span class="muted" id="payoutLastRefresh">Last refresh: –</span>
           <span class="spacer"></span>
           <span class="pill" id="payoutActionState">Idle</span>
@@ -248,55 +249,85 @@
 
       <div class="split">
         <div class="card">
-          <h3 style="margin:0 0 10px 0">Current / Recent Cycles</h3>
+          <h3 style="margin:0 0 10px 0">Pi Payout History</h3>
           <div class="tableWrap">
             <table class="table" id="payoutCyclesTable">
               <thead>
                 <tr>
-                  <th>Month</th>
-                  <th>Rate</th>
-                  <th>Threshold</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Closed</th>
+                  <th>month_key</th>
+                  <th>conversion_rate_locked</th>
+                  <th>min_payout_threshold_pi</th>
+                  <th>status</th>
+                  <th>created_at</th>
+                  <th>closed_at</th>
+                  <th>total_users</th>
+                  <th>total_payout_pi</th>
+                  <th>action</th>
                 </tr>
               </thead>
               <tbody id="payoutCyclesTbody">
-                <tr><td colspan="6" class="muted">Loading…</td></tr>
+                <tr><td colspan="9" class="muted">Loading…</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
         <div class="card">
-          <h3 style="margin:0 0 10px 0">Snapshot Summary</h3>
+          <h3 style="margin:0 0 10px 0">Snapshot Summary (per cycle)</h3>
           <div id="payoutSummary" class="muted">Loading…</div>
         </div>
       </div>
 
       <div class="card">
         <h3 style="margin:0 0 10px 0">Payout Jobs</h3>
+        <div class="hrow payout-filters" style="margin-bottom:10px">
+          <div class="muted">Month</div>
+          <input id="payoutFilterMonth" placeholder="YYYY-MM" style="width:110px"/>
+          <div class="muted">Status</div>
+          <select id="payoutFilterStatus" style="width:130px">
+            <option value="">all</option>
+            <option value="queued">queued</option>
+            <option value="processing">processing</option>
+            <option value="paid">paid</option>
+            <option value="failed">failed</option>
+          </select>
+          <div class="muted">UID</div>
+          <input id="payoutFilterUid" placeholder="uid search" style="min-width:180px"/>
+          <span class="spacer"></span>
+          <button class="btn2" id="btn-payout-filter-apply">Apply</button>
+          <button class="btn2" id="btn-payout-retry-failed">Retry failed payouts</button>
+        </div>
+
         <div class="tableWrap">
           <table class="table" id="payoutJobsTable">
             <thead>
               <tr>
-                <th>UID</th>
-                <th>Payout Pi</th>
-                <th>Status</th>
-                <th>TXID</th>
-                <th>Attempts</th>
-                <th>Error</th>
-                <th>Created</th>
-                <th>Updated</th>
+                <th>id</th>
+                <th>uid</th>
+                <th>payout_pi_amount</th>
+                <th>status</th>
+                <th>txid</th>
+                <th>attempts</th>
+                <th>error_message</th>
+                <th>created_at</th>
+                <th>updated_at</th>
+                <th>actions</th>
               </tr>
             </thead>
             <tbody id="payoutJobsTbody">
-              <tr><td colspan="8" class="muted">Loading…</td></tr>
+              <tr><td colspan="10" class="muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>
+
+        <div class="hrow" style="margin-top:10px">
+          <button class="btn2" id="btn-payout-jobs-prev">Prev</button>
+          <button class="btn2" id="btn-payout-jobs-next">Next</button>
+          <span class="muted" id="payoutJobsMeta">–</span>
+        </div>
       </div>
     </section>
+
     <!-- ONLINE VIEW -->
     <section id="view-online" class="hidden">
       <h2 style="margin:8px 0 0 0">Online</h2>
@@ -345,5 +376,6 @@
 <script src="admin.js"></script>
 </body>
 </html>
+
 
 
