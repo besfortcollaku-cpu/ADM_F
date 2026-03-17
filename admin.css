@@ -436,3 +436,6 @@ h2{
   .payout-filters select{ width:100% !important; min-width:0 !important; }
   #payoutCyclesTable, #payoutJobsTable{ min-width:980px; }
 }
+.status-blocked{ background:#4a1a1a !important; border-color:#a33b3b !important; color:#ffe2e2 !important; }
+.status-manual_review{ background:#3b2f12 !important; border-color:#7d621f !important; color:#ffefc7 !important; }
+.status-failed_permanent{ background:#641b1b !important; border-color:#c14646 !important; color:#ffe7e7 !important; }

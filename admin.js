@@ -548,6 +548,7 @@ function jobActionButtons(r) {
     <div class="payout-actions">
       <button class="btn3 mini" data-job-requeue="${id}">Requeue</button>
       <button class="btn3 mini" data-job-resolve="${id}">Mark resolved</button>
+      <button class="btn3 mini" data-job-logs="${id}">Logs</button>
     </div>
   `;
 }
@@ -556,14 +557,14 @@ function renderPayoutJobs(rows) {
   const tbody = document.getElementById("payoutJobsTbody");
   if (!tbody) return;
   if (!Array.isArray(rows) || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="muted">No payout jobs yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="muted">No payout jobs yet.</td></tr>`;
     setPayoutJobsMeta();
     return;
   }
 
   const html = [];
   for (const r of rows) {
-    const isFailed = String(r.status || "") === "failed";
+    const isFailed = ["failed", "failed_permanent", "blocked"].includes(String(r.status || ""));
     html.push(`
       <tr>
         <td class="mono">${escapeHtml(String(r.id || "-"))}</td>
@@ -571,8 +572,12 @@ function renderPayoutJobs(rows) {
         <td>${escapeHtml(String(r.payout_pi_amount ?? "0"))}</td>
         <td>${statusBadge(r.status)}</td>
         <td>${txidCell(r.txid)}</td>
+        <td>${escapeHtml(String(r.external_status || "-"))}</td>
         <td>${escapeHtml(String(r.attempts ?? 0))}</td>
-        <td>${isFailed ? `<button class="btn3 mini" data-toggle-error="${Number(r.id || 0)}">View error</button>` : "-"}</td>
+        <td>${r.treasury_blocked ? "YES" : "NO"}</td>
+        <td>${(String(r.status || "") === "failed" || String(r.status || "") === "failed_permanent" || String(r.status || "") === "blocked") ? `<button class="btn3 mini" data-toggle-error="${Number(r.id || 0)}">View error</button>` : "-"}</td>
+        <td class="muted">${escapeHtml(formatIso(r.sent_at))}</td>
+        <td class="muted">${escapeHtml(formatIso(r.confirmed_at))}</td>
         <td class="muted">${escapeHtml(formatIso(r.created_at))}</td>
         <td class="muted">${escapeHtml(formatIso(r.updated_at))}</td>
         <td>${jobActionButtons(r)}</td>
@@ -582,7 +587,7 @@ function renderPayoutJobs(rows) {
     if (isFailed) {
       html.push(`
         <tr class="payout-row-detail hidden" id="payout-error-row-${Number(r.id || 0)}">
-          <td colspan="10">
+          <td colspan="14">
             <div class="muted">error_message</div>
             <pre class="mono payout-error-box">${escapeHtml(r.error_message || "-")}</pre>
           </td>
@@ -611,6 +616,21 @@ function renderPayoutJobs(rows) {
         `Requeue failed payout job #${id}?`,
         () => adminSend("POST", "/admin/payouts/requeue", { job_id: id })
       );
+    });
+  });
+
+
+  tbody.querySelectorAll("button[data-job-logs]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-job-logs") || 0);
+      if (!id) return;
+      try {
+        const out = await adminFetch("/admin/payouts/jobs/" + encodeURIComponent(id) + "/logs?limit=20");
+        const payload = Array.isArray(out?.rows) ? out.rows : [];
+        alert(payload.length ? JSON.stringify(payload, null, 2) : "No transfer logs yet.");
+      } catch (e) {
+        alert("Failed to load logs: " + (e?.message || e));
+      }
     });
   });
 

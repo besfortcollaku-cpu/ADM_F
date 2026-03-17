@@ -294,6 +294,9 @@
             <option value="processing">processing</option>
             <option value="paid">paid</option>
             <option value="failed">failed</option>
+            <option value="failed_permanent">failed_permanent</option>
+            <option value="blocked">blocked</option>
+            <option value="manual_review">manual_review</option>
           </select>
           <div class="muted">UID</div>
           <input id="payoutFilterUid" placeholder="uid search" style="min-width:180px"/>
@@ -311,15 +314,19 @@
                 <th>payout_pi_amount</th>
                 <th>status</th>
                 <th>txid</th>
+                <th>external_status</th>
                 <th>attempts</th>
+                <th>treasury_blocked</th>
                 <th>error_message</th>
+                <th>sent_at</th>
+                <th>confirmed_at</th>
                 <th>created_at</th>
                 <th>updated_at</th>
                 <th>actions</th>
               </tr>
             </thead>
             <tbody id="payoutJobsTbody">
-              <tr><td colspan="10" class="muted">Loading…</td></tr>
+              <tr><td colspan="14" class="muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>
