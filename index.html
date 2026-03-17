@@ -145,6 +145,7 @@
           <option value="coins_desc">Order: Coins</option>
           <option value="created_at_desc">Order: Created</option>
         </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlySuspicious"/> Suspicious only</label>
         <button class="btn2" id="btn-users-search">Search</button>
 
         <div class="right" style="margin-left:auto">
@@ -166,11 +167,14 @@
                   <th>Coins</th>
                   <th>Skips</th>
                   <th>Hints</th>
+                  <th>Fraud</th>
+                  <th>VPN</th>
+                  <th>Suspicious</th>
                   <th>Updated</th>
                 </tr>
               </thead>
               <tbody id="usersTbody">
-                <tr><td colspan="6" class="muted">Loading…</td></tr>
+                <tr><td colspan="9" class="muted">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -361,7 +365,7 @@
               </tr>
             </thead>
             <tbody id="onlineTbody">
-              <tr><td colspan="6" class="muted">Loading…</td></tr>
+              <tr><td colspan="9" class="muted">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -376,6 +380,8 @@
 <script src="admin.js"></script>
 </body>
 </html>
+
+
 
 
 

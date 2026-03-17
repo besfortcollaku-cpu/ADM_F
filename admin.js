@@ -196,6 +196,9 @@ function userRowHTML(u) {
       <td>${num(u.coins)}</td>
       <td>${num(u.free_skips_used)}</td>
       <td>${num(u.free_hints_used)}</td>
+      <td>${num(u.fraud_score)}</td>
+      <td>${u.vpn_flag ? "YES" : "NO"}</td>
+      <td>${u.suspicious ? "YES" : "NO"}</td>
       <td class="muted">${escapeHtml(updated)}</td>
     </tr>
   `;
@@ -258,12 +261,14 @@ async function loadUsers(reset=false) {
 
     const q = document.getElementById("usersSearch").value.trim();
     const order = document.getElementById("usersOrder").value;
+    const suspiciousOnly = document.getElementById("usersOnlySuspicious")?.checked ? "1" : "0";
 
     const url = "/admin/users"
       + "?search=" + encodeURIComponent(q)
       + "&limit=" + encodeURIComponent(usersLimit)
       + "&offset=" + encodeURIComponent(usersOffset)
-      + "&order=" + encodeURIComponent(order);
+      + "&order=" + encodeURIComponent(order)
+      + "&suspicious=" + encodeURIComponent(suspiciousOnly);
 
     const out = await adminFetch(url);
     const rows = out?.rows || [];
@@ -277,7 +282,7 @@ async function loadUsers(reset=false) {
 
     const tbody = document.getElementById("usersTbody");
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="muted">No users found.</td></tr>`;
       selectedUid = null;
       selectedUser = null;
       setDetailEnabled(false);
@@ -307,7 +312,7 @@ async function loadUsers(reset=false) {
   } catch (e) {
     console.error(e);
     document.getElementById("usersTbody").innerHTML =
-      `<tr><td colspan="6" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+      `<tr><td colspan="9" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
     setUsersMeta(0);
     setStatus("Error");
   }
@@ -373,7 +378,7 @@ async function loadOnline() {
   } catch (e) {
     console.error(e);
     document.getElementById("onlineTbody").innerHTML =
-      `<tr><td colspan="6" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+      `<tr><td colspan="9" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
     document.getElementById("onlineMeta").textContent = "–";
     setStatus("Error");
   }
@@ -1214,6 +1219,8 @@ function renderUsersChart(data) {
     }
   });
 }
+
+
 
 
 
