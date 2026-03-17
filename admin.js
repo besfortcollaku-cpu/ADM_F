@@ -468,6 +468,8 @@ function setPayoutLoading(on) {
     "btn-payout-retry-failed",
     "btn-payout-jobs-prev",
     "btn-payout-jobs-next",
+    "btn-payout-sim-on",
+    "btn-payout-sim-off",
   ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = !!on;
@@ -679,10 +681,19 @@ async function loadPayouts() {
 
     const simulation = !!cfg?.simulation_mode;
     const simEl = document.getElementById("payoutSimulation");
+    const simOnBtn = document.getElementById("btn-payout-sim-on");
+    const simOffBtn = document.getElementById("btn-payout-sim-off");
     if (simEl) {
       simEl.textContent = "Simulation: " + (simulation ? "ON" : "OFF");
       simEl.style.borderColor = simulation ? "#2a57b8" : "#5a2330";
       simEl.style.background = simulation ? "#17305f" : "#1a0f12";
+    }
+
+    if (simOnBtn && simOffBtn) {
+      simOnBtn.style.borderColor = simulation ? "#2a57b8" : "var(--border2)";
+      simOnBtn.style.background = simulation ? "#17305f" : "var(--panel2)";
+      simOffBtn.style.borderColor = simulation ? "var(--border2)" : "#b33d55";
+      simOffBtn.style.background = simulation ? "var(--panel2)" : "#5a1d28";
     }
 
     const modeEl = document.getElementById("payoutModeBanner");
@@ -975,6 +986,23 @@ document.getElementById("btn-payout-run-worker").onclick = async () => {
   );
 };
 
+
+
+document.getElementById("btn-payout-sim-on").onclick = async () => {
+  await payoutAction(
+    "Enable simulation",
+    "Turn PAYOUT_SIMULATE_SUCCESS ON?",
+    () => adminSend("POST", "/admin/payouts/config/simulation", { enabled: true })
+  );
+};
+
+document.getElementById("btn-payout-sim-off").onclick = async () => {
+  await payoutAction(
+    "Disable simulation",
+    "Turn PAYOUT_SIMULATE_SUCCESS OFF?",
+    () => adminSend("POST", "/admin/payouts/config/simulation", { enabled: false })
+  );
+};
 document.getElementById("btn-payout-retry-failed").onclick = async () => {
   const month_key = (document.getElementById("payoutFilterMonth")?.value || document.getElementById("payoutMonthKey")?.value || "").trim();
 
