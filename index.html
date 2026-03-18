@@ -146,6 +146,9 @@
           <option value="created_at_desc">Order: Created</option>
         </select>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlySuspicious"/> Suspicious only</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlyVpn"/> VPN only</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlyManualReview"/> Manual review only</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlyPayoutLocked"/> Payout locked only</label>
         <button class="btn2" id="btn-users-search">Search</button>
 
         <div class="right" style="margin-left:auto">
@@ -170,11 +173,15 @@
                   <th>Fraud</th>
                   <th>VPN</th>
                   <th>Suspicious</th>
+                  <th>Manual</th>
+                  <th>Locked</th>
+                  <th>AdsToday</th>
+                  <th>Wallet</th>
                   <th>Updated</th>
                 </tr>
               </thead>
               <tbody id="usersTbody">
-                <tr><td colspan="9" class="muted">Loading...</td></tr>
+                <tr><td colspan="13" class="muted">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -209,9 +216,13 @@
           <div class="hrow">
             <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset coins = 0</button>
             <button class="btn3 btnDanger" id="btn-reset-free" disabled>Reset free skips/hints</button>
+            <button class="btn3" id="btn-fraud-recompute" disabled>Re-evaluate fraud</button>
+            <button class="btn3" id="btn-force-manual-review" disabled>Force manual review</button>
+            <button class="btn3" id="btn-clear-suspicious" disabled>Clear suspicious</button>
+            <button class="btn3" id="btn-unlock-payout" disabled>Unlock payout</button>
             <span class="spacer"></span>
             <button class="btn3" id="btn-detail-refresh" disabled>Refresh detail</button>
-            <button class="btn3 btnDanger" id="btn-user-delete" disabled>🗑 Delete user</button>
+            <button class="btn3 btnDanger" id="btn-user-delete" disabled>Delete user</button>
           </div>
 
           <div class="muted" style="margin-top:10px">
@@ -315,6 +326,9 @@
                 <th>uid</th>
                 <th>payout_pi_amount</th>
                 <th>status</th>
+                <th>flagged</th>
+                <th>risk_reason</th>
+                <th>review_status</th>
                 <th>txid</th>
                 <th>external_status</th>
                 <th>attempts</th>
@@ -328,7 +342,7 @@
               </tr>
             </thead>
             <tbody id="payoutJobsTbody">
-              <tr><td colspan="14" class="muted">Loading…</td></tr>
+              <tr><td colspan="17" class="muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>

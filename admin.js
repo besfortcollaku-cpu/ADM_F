@@ -175,7 +175,11 @@ function setDetailEnabled(on) {
     "btn-coins-reset",
     "btn-reset-free",
     "btn-detail-refresh",
-    "btn-user-delete"
+    "btn-user-delete",
+    "btn-fraud-recompute",
+    "btn-force-manual-review",
+    "btn-clear-suspicious",
+    "btn-unlock-payout"
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -199,6 +203,10 @@ function userRowHTML(u) {
       <td>${num(u.fraud_score)}</td>
       <td>${u.vpn_flag ? "YES" : "NO"}</td>
       <td>${u.suspicious ? "YES" : "NO"}</td>
+      <td>${u.manual_review_required ? "YES" : "NO"}</td>
+      <td>${u.payout_locked ? "YES" : "NO"}</td>
+      <td>${num(u.ads_watched_today)}</td>
+      <td class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</td>
       <td class="muted">${escapeHtml(updated)}</td>
     </tr>
   `;
@@ -244,6 +252,17 @@ function renderUserDetail(d) {
   </div>`);
 
   parts.push(`<div class="divider"></div>`);
+  parts.push(`<div class="muted">Risk</div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">fraud_score</span><span class="spacer"></span><span>${num(u.fraud_score)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">vpn_flag</span><span class="spacer"></span><span>${u.vpn_flag ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">suspicious</span><span class="spacer"></span><span>${u.suspicious ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">manual_review_required</span><span class="spacer"></span><span>${u.manual_review_required ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">payout_locked</span><span class="spacer"></span><span>${u.payout_locked ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">ads_watched_today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
+    <div class="muted">risk_flags</div>
+    <pre class="mono">${escapeHtml(JSON.stringify(u.risk_flags || [], null, 2))}</pre>
+  `);
   parts.push(`<div class="muted">Progress</div>
     <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
     <div class="muted">Reward stats</div>
@@ -262,13 +281,19 @@ async function loadUsers(reset=false) {
     const q = document.getElementById("usersSearch").value.trim();
     const order = document.getElementById("usersOrder").value;
     const suspiciousOnly = document.getElementById("usersOnlySuspicious")?.checked ? "1" : "0";
+    const vpnOnly = document.getElementById("usersOnlyVpn")?.checked ? "1" : "0";
+    const manualReviewOnly = document.getElementById("usersOnlyManualReview")?.checked ? "1" : "0";
+    const payoutLockedOnly = document.getElementById("usersOnlyPayoutLocked")?.checked ? "1" : "0";
 
     const url = "/admin/users"
       + "?search=" + encodeURIComponent(q)
       + "&limit=" + encodeURIComponent(usersLimit)
       + "&offset=" + encodeURIComponent(usersOffset)
       + "&order=" + encodeURIComponent(order)
-      + "&suspicious=" + encodeURIComponent(suspiciousOnly);
+      + "&suspicious=" + encodeURIComponent(suspiciousOnly)
+      + "&vpn=" + encodeURIComponent(vpnOnly)
+      + "&manual_review=" + encodeURIComponent(manualReviewOnly)
+      + "&payout_locked=" + encodeURIComponent(payoutLockedOnly);
 
     const out = await adminFetch(url);
     const rows = out?.rows || [];
@@ -282,7 +307,7 @@ async function loadUsers(reset=false) {
 
     const tbody = document.getElementById("usersTbody");
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="muted">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="muted">No users found.</td></tr>`;
       selectedUid = null;
       selectedUser = null;
       setDetailEnabled(false);
@@ -312,7 +337,7 @@ async function loadUsers(reset=false) {
   } catch (e) {
     console.error(e);
     document.getElementById("usersTbody").innerHTML =
-      `<tr><td colspan="9" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+      `<tr><td colspan="13" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
     setUsersMeta(0);
     setStatus("Error");
   }
@@ -378,7 +403,7 @@ async function loadOnline() {
   } catch (e) {
     console.error(e);
     document.getElementById("onlineTbody").innerHTML =
-      `<tr><td colspan="9" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+      `<tr><td colspan="13" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
     document.getElementById("onlineMeta").textContent = "–";
     setStatus("Error");
   }
@@ -410,6 +435,13 @@ function escapeHtml(s) {
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+function maskWallet(v) {
+  const s = String(v || "").trim();
+  if (!s) return "-";
+  if (s.length <= 12) return s;
+  return s.slice(0, 6) + "..." + s.slice(-4);
+}
+
 function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -559,7 +591,7 @@ function renderPayoutJobs(rows) {
   const tbody = document.getElementById("payoutJobsTbody");
   if (!tbody) return;
   if (!Array.isArray(rows) || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="14" class="muted">No payout jobs yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="muted">No payout jobs yet.</td></tr>`;
     setPayoutJobsMeta();
     return;
   }
@@ -573,6 +605,9 @@ function renderPayoutJobs(rows) {
         <td class="mono">${escapeHtml(r.uid || "-")}</td>
         <td>${escapeHtml(String(r.payout_pi_amount ?? "0"))}</td>
         <td>${statusBadge(r.status)}</td>
+        <td>${r.flagged ? "YES" : "NO"}</td>
+        <td class="mono">${escapeHtml(String(r.risk_reason || "-"))}</td>
+        <td>${escapeHtml(String(r.review_status || "auto"))}</td>
         <td>${txidCell(r.txid)}</td>
         <td>${escapeHtml(String(r.external_status || "-"))}</td>
         <td>${escapeHtml(String(r.attempts ?? 0))}</td>
@@ -589,7 +624,7 @@ function renderPayoutJobs(rows) {
     if (isFailed) {
       html.push(`
         <tr class="payout-row-detail hidden" id="payout-error-row-${Number(r.id || 0)}">
-          <td colspan="14">
+          <td colspan="17">
             <div class="muted">error_message</div>
             <pre class="mono payout-error-box">${escapeHtml(r.error_message || "-")}</pre>
           </td>
@@ -852,6 +887,55 @@ document.getElementById("btn-reset-free").onclick = async () => {
   }
 };
 
+document.getElementById("btn-fraud-recompute").onclick = async () => {
+  if (!selectedUid) return;
+  try {
+    setStatus("Re-evaluating fraud...");
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/fraud-recompute", {});
+    await refreshUsersAndDetail();
+    toast("Fraud score re-evaluated");
+    setStatus("OK");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-force-manual-review").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Force manual review for this user?")) return;
+  try {
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/manual-review", { enabled: true });
+    await refreshUsersAndDetail();
+    toast("Manual review enabled");
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+document.getElementById("btn-clear-suspicious").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Clear suspicious flag for this user?")) return;
+  try {
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/suspicious-clear", {});
+    await refreshUsersAndDetail();
+    toast("Suspicious flag cleared");
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
+
+document.getElementById("btn-unlock-payout").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Unlock payout for this user?")) return;
+  try {
+    await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/payout-unlock", {});
+    await refreshUsersAndDetail();
+    toast("Payout unlocked");
+  } catch (e) {
+    alert(e?.message || String(e));
+  }
+};
 document.getElementById("btn-user-delete").onclick = async () => {
   if (!selectedUid) return;
 
