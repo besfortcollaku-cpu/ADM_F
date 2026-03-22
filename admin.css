@@ -398,6 +398,96 @@ h2{
   padding: 6px 10px !important;
   font-size: 13px !important;
 }
+
+.adminWarningPill{
+  border-color: var(--border2);
+  background: var(--panel2);
+}
+
+.adminWarningPill.is-active{
+  border-color: #5a2330;
+  background: #2a1419;
+}
+
+.adminActionGrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+
+.adminActionGroup{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:rgba(16,28,54,.38);
+}
+
+.adminActionTitle{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.3px;
+  margin-bottom:10px;
+  text-transform:uppercase;
+}
+
+.adminActionNote{
+  opacity:.9;
+}
+
+.adminRawBlock{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  background:rgba(11,18,32,.48);
+}
+
+.adminRawBlock summary{
+  cursor:pointer;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  margin-bottom:10px;
+}
+
+.adminRawBlock[open] summary{
+  margin-bottom:12px;
+}
+
+.adminTierRow{
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:rgba(16,28,54,.42);
+}
+
+.payoutState{
+  display:inline-flex;
+}
+
+.payoutState.is-settled{
+  border-color:#2a57b8;
+  background:#17305f;
+}
+
+.payoutState.is-preview{
+  border-color:#7a6330;
+  background:#2b2413;
+}
+
+.payoutState.is-ready{
+  border-color:var(--border2);
+  background:var(--panel2);
+}
+
+@media (min-width: 980px){
+  .adminActionGrid{
+    grid-template-columns:repeat(2, minmax(0,1fr));
+  }
+  .adminActionGroup:last-child{
+    grid-column:1 / -1;
+  }
+}
 /* Payout status badges */
 .status-badge{
   display:inline-block;

@@ -40,6 +40,59 @@ function setDetailMeta(txt) {
   if (el) el.textContent = txt;
 }
 
+function formatMaybe(value) {
+  return value == null || value === "" ? "–" : String(value);
+}
+
+function warningPill(label, active) {
+  return `<span class="pill adminWarningPill ${active ? "is-active" : ""}">${escapeHtml(label)}</span>`;
+}
+
+function renderEconomyHealth(stats) {
+  const summaryEl = document.getElementById("economyHealthSummary");
+  const warningsEl = document.getElementById("economyHealthWarnings");
+  const stateEl = document.getElementById("economyHealthState");
+  if (!summaryEl || !warningsEl || !stateEl) return;
+
+  if (!stats) {
+    stateEl.textContent = "Unavailable";
+    summaryEl.innerHTML = `<div class="muted">Economy health unavailable.</div>`;
+    warningsEl.innerHTML = "";
+    return;
+  }
+
+  const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(formatMaybe(value))}</span></div>`;
+  const warnings = [
+    warningPill("Duplicate risk", !!stats.duplicateSettlementRisk),
+    warningPill("Pool mismatch", !!stats.poolMismatchWarning),
+    warningPill("Orphan rows", !!stats.orphanPayoutRowsWarning),
+  ];
+  const hasWarning = !!stats.duplicateSettlementRisk || !!stats.poolMismatchWarning || !!stats.orphanPayoutRowsWarning;
+
+  stateEl.textContent = hasWarning ? "Warning" : "Healthy";
+  stateEl.style.borderColor = hasWarning ? "#5a2330" : "#2a57b8";
+  stateEl.style.background = hasWarning ? "#2a1419" : "#17305f";
+
+  summaryEl.innerHTML = [
+    item("Current Month", stats.currentMonthKey),
+    item("Season Pool", stats.currentSeasonPool),
+    item("Users With Score", stats.totalUsersWithScore),
+    item("Payout Eligible Users", stats.payoutEligibleUsers),
+    item("Current Score Total", stats.totalCurrentScore),
+    item("Current Payout Rows", stats.currentMonthPayoutRows),
+    item("Settlement Status", stats.settlementStatus),
+    item("Already Settled", stats.alreadySettledCurrentMonth ? "YES" : "NO"),
+    item("Last Settled Month", stats.lastSettlementMonthKey),
+    item("Last Settlement Payout", stats.lastSettlementTotalPayoutPi),
+    item("Users At Daily Cap", stats.usersAtDailyCap),
+    item("Score But Not Eligible", stats.usersWithScoreButNotEligible),
+    item("Manual Score Adjustments", stats.manualScoreAdjustmentsThisMonth),
+    item("Manual Coins Adjustments", stats.manualCoinsAdjustmentsThisMonth),
+  ].join("");
+
+  warningsEl.innerHTML = warnings.join("");
+}
+
 function setOnlineAuto(on){
   const el = document.getElementById("onlineAuto");
   if (!el) return;
@@ -144,6 +197,10 @@ function setDetailEnabled(on) {
     "btn-coins-add",
     "coinsSet",
     "btn-coins-set",
+    "scoreDelta",
+    "btn-score-adjust",
+    "scoreSet",
+    "btn-score-set",
     "btn-coins-reset",
     "btn-reset-free",
     "btn-detail-refresh",
@@ -220,54 +277,64 @@ function renderUserDetail(d) {
     <div class="card" style="padding:12px">
       <div class="kpi-title">Projected Tier</div>
       <div class="kpi-value" style="font-size:22px">${escapeHtml(getProjectedTier(u))}</div>
-      <div class="kpi-sub">${currentRank ? `Current rank #${currentRank}` : "Rank unavailable"}</div>
+      <div class="kpi-sub">${currentRank ? `Rank #${currentRank}` : "Rank -"}</div>
     </div>
   </div>`);
 
   parts.push(`<div class="divider"></div>`);
   parts.push(`<div class="muted">Economy</div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">coins</span><span class="spacer"></span><span>${getUserCoins(u)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">score</span><span class="spacer"></span><span>${getUserScore(u)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">daily_score</span><span class="spacer"></span><span>${getUserDailyScore(u)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">current_rank</span><span class="spacer"></span><span>${currentRank ? "#" + currentRank : "-"}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">projected_tier</span><span class="spacer"></span><span>${escapeHtml(getProjectedTier(u))}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Coins</span><span class="spacer"></span><span>${getUserCoins(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Score</span><span class="spacer"></span><span>${getUserScore(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Daily Score</span><span class="spacer"></span><span>${getUserDailyScore(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Current Rank</span><span class="spacer"></span><span>${currentRank ? "#" + currentRank : "-"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Projected Tier</span><span class="spacer"></span><span>${escapeHtml(getProjectedTier(u))}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
   `);
 
   parts.push(`<div class="divider"></div>`);
   parts.push(`<div class="muted">Gameplay</div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">free_skips_used</span><span class="spacer"></span><span>${num(u.free_skips_used)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">free_hints_used</span><span class="spacer"></span><span>${num(u.free_hints_used)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">ads_watched_today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Free Skips Used</span><span class="spacer"></span><span>${num(u.free_skips_used)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Free Hints Used</span><span class="spacer"></span><span>${num(u.free_hints_used)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Ads Watched Today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
   `);
 
   parts.push(`<div class="divider"></div>`);
   parts.push(`<div class="muted">Risk</div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">fraud_score</span><span class="spacer"></span><span>${num(u.fraud_score)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">vpn_flag</span><span class="spacer"></span><span>${u.vpn_flag ? "YES" : "NO"}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">suspicious</span><span class="spacer"></span><span>${u.suspicious ? "YES" : "NO"}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">manual_review_required</span><span class="spacer"></span><span>${u.manual_review_required ? "YES" : "NO"}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">payout_locked</span><span class="spacer"></span><span>${u.payout_locked ? "YES" : "NO"}</span></div>
-    <div class="muted">risk_flags</div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Fraud Score</span><span class="spacer"></span><span>${num(u.fraud_score)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">VPN Flag</span><span class="spacer"></span><span>${u.vpn_flag ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Suspicious</span><span class="spacer"></span><span>${u.suspicious ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Manual Review Required</span><span class="spacer"></span><span>${u.manual_review_required ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Payout Locked</span><span class="spacer"></span><span>${u.payout_locked ? "YES" : "NO"}</span></div>
+    <div class="muted">Risk Flags</div>
     <pre class="mono">${escapeHtml(JSON.stringify(u.risk_flags || [], null, 2))}</pre>
   `);
 
   if (payoutRows) {
-    parts.push(`<div class="divider"></div><div class="muted">Recent payout rows</div>
-      <pre class="mono">${escapeHtml(JSON.stringify(payoutRows, null, 2))}</pre>`);
+    parts.push(`<div class="divider"></div>
+      <details class="adminRawBlock">
+        <summary>Recent payout rows</summary>
+        <pre class="mono">${escapeHtml(JSON.stringify(payoutRows, null, 2))}</pre>
+      </details>`);
   }
 
   if (rewardRows) {
-    parts.push(`<div class="divider"></div><div class="muted">Recent reward / ledger rows</div>
-      <pre class="mono">${escapeHtml(JSON.stringify(rewardRows, null, 2))}</pre>`);
+    parts.push(`<div class="divider"></div>
+      <details class="adminRawBlock">
+        <summary>Recent activity rows</summary>
+        <pre class="mono">${escapeHtml(JSON.stringify(rewardRows, null, 2))}</pre>
+      </details>`);
   }
 
-  parts.push(`<div class="divider"></div><div class="muted">Progress</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
-    <div class="muted">Reward stats</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(s, null, 2))}</pre>
-    <div class="muted">Last session</div>
-    <pre class="mono">${escapeHtml(JSON.stringify(ls, null, 2))}</pre>
+  parts.push(`<div class="divider"></div>
+    <details class="adminRawBlock">
+      <summary>Raw detail</summary>
+      <div class="muted">Progress</div>
+      <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
+      <div class="muted">User stats</div>
+      <pre class="mono">${escapeHtml(JSON.stringify(s, null, 2))}</pre>
+      <div class="muted">Last session</div>
+      <pre class="mono">${escapeHtml(JSON.stringify(ls, null, 2))}</pre>
+    </details>
   `);
   return parts.join("");
 }
@@ -276,6 +343,13 @@ async function loadUsers(reset=false) {
   try {
     setStatus("Loading users…");
     if (reset) usersOffset = 0;
+
+    try {
+      const statsOut = await adminFetch("/admin/stats?minutes=5");
+      renderEconomyHealth(statsOut?.data || statsOut || null);
+    } catch {
+      renderEconomyHealth(null);
+    }
 
     const q = document.getElementById("usersSearch").value.trim();
     const order = document.getElementById("usersOrder").value;
@@ -533,10 +607,10 @@ function getTierSummary(data) {
 
 function renderSettlementStateMessage(summary) {
   if (!summary) return "No settlement data yet.";
-  if (summary.alreadySettled) return "Settlement already completed for this month.";
-  if (String(summary.status || "").toLowerCase() === "preview") return "Preview only - no changes have been applied.";
-  if (String(summary.status || "").toLowerCase() === "completed" || String(summary.status || "").toLowerCase() === "closed") return "Settlement completed successfully.";
-  return "Score-based settlement ready.";
+  if (summary.alreadySettled) return "Settled";
+  if (String(summary.status || "").toLowerCase() === "preview") return "Preview";
+  if (String(summary.status || "").toLowerCase() === "completed" || String(summary.status || "").toLowerCase() === "closed") return "Settled";
+  return "Ready";
 }
 
 function setPayoutActionState(text, tone) {
@@ -598,7 +672,7 @@ function renderPayoutCycles(rows) {
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td>${escapeHtml(r.month_key || "-")}</td>
-      <td>${escapeHtml(String(r.conversion_rate_locked ?? "-"))}</td>
+      <td>${escapeHtml(String(r.pool_pi ?? r.conversion_rate_locked ?? "-"))}</td>
       <td>${escapeHtml(String(r.min_payout_threshold_pi ?? "-"))}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="muted">${escapeHtml(formatIso(r.created_at))}</td>
@@ -633,14 +707,14 @@ function renderPayoutSummary(summary) {
 
   const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(String(value ?? 0))}</span></div>`;
   el.innerHTML = [
-    item("projected payout rows", summary.total_users_snapshotted),
-    item("payout eligible users", summary.eligible_count),
-    item("below threshold", summary.below_threshold_count),
-    item("queued settlement jobs", summary.queued_count),
-    item("paid settlements", summary.paid_count),
-    item("failed settlements", summary.failed_count),
-    item("season payout Pi", summary.total_payout_pi_amount),
-    item("tier summary", summary.tier_summary ?? "–"),
+    item("Payout Rows", summary.total_users_snapshotted),
+    item("Eligible Users", summary.eligible_count),
+    item("Below Threshold", summary.below_threshold_count),
+    item("Queued Jobs", summary.queued_count),
+    item("Paid", summary.paid_count),
+    item("Failed", summary.failed_count),
+    item("Total Payout Pi", summary.total_payout_pi_amount),
+    item("Tier Summary", summary.tier_summary ?? "–"),
   ].join("");
 }
 
@@ -652,6 +726,7 @@ function renderSettlementSummary(data) {
 
   if (!data) {
     stateEl.textContent = "No settlement data yet.";
+    stateEl.className = "muted";
     el.innerHTML = `<div class="muted">Select a month to preview or check settlement status.</div>`;
     if (runBtn) runBtn.disabled = false;
     return;
@@ -659,7 +734,9 @@ function renderSettlementSummary(data) {
 
   const summary = normalizeSettlementResponse(data);
   const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(String(value ?? "–"))}</span></div>`;
+  const statusLower = String(summary.status || "").toLowerCase();
   stateEl.textContent = renderSettlementStateMessage(summary);
+  stateEl.className = `pill payoutState ${summary.alreadySettled || statusLower === "completed" || statusLower === "closed" ? "is-settled" : statusLower === "preview" ? "is-preview" : "is-ready"}`;
   el.innerHTML = [
     item("Month", summary.monthKey || "–"),
     item("Status", summary.status || "–"),
@@ -683,7 +760,7 @@ function renderTierSummary(data) {
     return;
   }
   el.innerHTML = tiers.map((tier) => `
-    <div class="hrow" style="margin:6px 0">
+    <div class="hrow adminTierRow" style="margin:6px 0">
       <span>${escapeHtml(String(tier.tierLabel || tier.tierName || "-"))}</span>
       <span class="spacer"></span>
       <span class="muted">Users ${escapeHtml(String(tier.userCount ?? "–"))}</span>
@@ -698,7 +775,7 @@ function renderSettlementPreview(data) {
   if (!tbody) return;
   const rows = getSettlementRows(data);
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">No settlement preview yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No payout rows.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((row) => `
@@ -1213,7 +1290,7 @@ document.getElementById("btn-payout-run").onclick = async () => {
   const min_payout_threshold_pi = Number(document.getElementById("payoutThreshold")?.value || 0);
 
   if (!month_key) return alert("Month key required (YYYY-MM)");
-  if (!Number.isFinite(conversion_rate_locked) || conversion_rate_locked < 0) return alert("Valid settlement rate required");
+  if (!Number.isFinite(conversion_rate_locked) || conversion_rate_locked < 0) return alert("Valid settlement setting required");
   if (!Number.isFinite(min_payout_threshold_pi) || min_payout_threshold_pi < 0) return alert("Valid threshold required");
 
   await payoutAction(
@@ -1318,3 +1395,5 @@ document.getElementById("sidebar")?.addEventListener("click", (e) => {
 window.addEventListener("resize", () => {
   if (window.innerWidth > 980) closeSidebar();
 });
+
+
