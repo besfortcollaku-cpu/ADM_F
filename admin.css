@@ -257,7 +257,7 @@ input, select{
   .table{ min-width: 720px; }
 }
 /* =========================
-   DATA DASHBOARD (compact / dense)
+   DATA PANEL (compact / dense)
 ========================= */
 
 :root{
@@ -271,12 +271,12 @@ input, select{
 .grid{ gap: 10px !important; margin: 10px 0 !important; }
 .split{ gap: 10px !important; }
 
-/* KPI denser + more “dashboard” */
+/* KPI denser + more operational */
 .kpi-title{ font-size: 11px !important; }
 .kpi-value{ font-size: 24px !important; }
 .kpi-sub{ font-size: 11px !important; }
 
-/* toolbar sticky like admin dashboards */
+/* toolbar sticky like admin panels */
 .toolbar{
   position: sticky;
   top: 0;
