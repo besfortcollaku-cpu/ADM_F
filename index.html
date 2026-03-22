@@ -37,8 +37,7 @@
   <div class="main">
     <div class="toolbar">
       <div class="tabs">
-        <button class="tab active" id="tab-dashboard">Dashboard</button>
-        <button class="tab" id="tab-users">Users</button>
+        <button class="tab active" id="tab-users">Users</button>
         <button class="tab" id="tab-online">Online</button>
         <button class="tab" id="tab-payouts">Payouts</button>
       </div>
@@ -51,91 +50,8 @@
       </div>
     </div>
 
-    <!-- DASHBOARD VIEW -->
-    <section id="view-dashboard">
-      <h2 style="margin:6px 0 10px 0; font-weight:900; letter-spacing:-.3px">Dashboard</h2>
-
-      <div class="grid">
-        <div class="card">
-          <div class="kpi-title">Total Users</div>
-          <div class="kpi-value" id="kpiUsers">–</div>
-          <div class="kpi-sub">Registered users in DB</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Total Coins</div>
-          <div class="kpi-value" id="kpiCoins">–</div>
-          <div class="kpi-sub">Sum of user coins</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Online Now</div>
-          <div class="kpi-value" id="kpiOnline">–</div>
-          <div class="kpi-sub">Seen in last N minutes</div>
-        </div>
-
-        <div class="card">
-          <div class="kpi-title">Ad +50 Claims</div>
-          <div class="kpi-value" id="kpiAdCount">–</div>
-          <div class="kpi-sub">Count of reward_claims type=ad_50</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Daily Logins</div>
-          <div class="kpi-value" id="kpiDailyCount">–</div>
-          <div class="kpi-sub">Count of daily_login claims</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title">Levels Completed</div>
-          <div class="kpi-value" id="kpiLevels">–</div>
-          <div class="kpi-sub">Rows in level_rewards</div>
-        </div>
-      </div>
-
-      
-      <div class="card">
-        <div class="hrow" style="margin-bottom:10px">
-          <h3 style="margin:0">Charts</h3>
-          <span class="spacer"></span>
-          <span class="muted">Last 14 days</span>
-        </div>
-        <div class="chartsGrid">
-          <div class="chartCard">
-            <div class="muted" style="margin-bottom:8px">Coins Growth</div>
-            <canvas id="chartCoins" height="140"></canvas>
-            <div class="muted mini" id="chartCoinsHint" style="margin-top:8px"></div>
-          </div>
-          <div class="chartCard">
-            <div class="muted" style="margin-bottom:8px">Daily Logins</div>
-            <canvas id="chartLogins" height="140"></canvas>
-            <div class="muted mini" id="chartLoginsHint" style="margin-top:8px"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin:0 0 10px 0">Raw</h3>
-        <div id="dashboard">Loading…</div>
-      </div>
-    </section>
-    
-    
-    
-    <!-- CHARTS -->
-<div class="charts">
-  <div class="card">
-    <h3>Coins Earned (Last 7 Days)</h3>
-    <canvas id="coinsChart" height="120"></canvas>
-  </div>
-
-  <div class="card">
-    <h3>Active Users (Last 7 Days)</h3>
-    <canvas id="usersChart" height="120"></canvas>
-  </div>
-</div>
-
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- USERS VIEW -->
-    <section id="view-users" class="hidden">
+<!-- USERS VIEW -->
+    <section id="view-users">
       <h2 style="margin:8px 0 0 0">Users</h2>
 
       <div class="toolbar">
@@ -143,6 +59,7 @@
         <select id="usersOrder">
           <option value="updated_at_desc">Order: Updated</option>
           <option value="coins_desc">Order: Coins</option>
+          <option value="score_desc">Order: Score</option>
           <option value="created_at_desc">Order: Created</option>
         </select>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="usersOnlySuspicious"/> Suspicious only</label>
@@ -168,20 +85,17 @@
                   <th>Username</th>
                   <th>UID</th>
                   <th>Coins</th>
+                  <th>Score</th>
+                  <th>Daily Score</th>
                   <th>Skips</th>
                   <th>Hints</th>
-                  <th>Fraud</th>
-                  <th>VPN</th>
-                  <th>Suspicious</th>
-                  <th>Manual</th>
-                  <th>Locked</th>
-                  <th>AdsToday</th>
+                  <th>Risk</th>
                   <th>Wallet</th>
                   <th>Updated</th>
                 </tr>
               </thead>
               <tbody id="usersTbody">
-                <tr><td colspan="13" class="muted">Loading...</td></tr>
+                <tr><td colspan="10" class="muted">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -205,16 +119,27 @@
           <div class="hrow" style="margin-bottom:10px">
             <span class="muted">Coins:</span>
             <input id="coinsDelta" type="number" placeholder="+50 / -50" style="width:130px" disabled />
-            <button class="btn3 btnOk" id="btn-coins-add" disabled>Add/Sub</button>
+            <button class="btn3 btnOk" id="btn-coins-add" disabled>Adjust Coins</button>
 
             <span class="spacer"></span>
 
             <input id="coinsSet" type="number" placeholder="Set exact" style="width:140px" disabled />
-            <button class="btn3 btnOk" id="btn-coins-set" disabled>Set</button>
+            <button class="btn3 btnOk" id="btn-coins-set" disabled>Set Coins</button>
+          </div>
+
+          <div class="hrow" style="margin-bottom:10px">
+            <span class="muted">Score:</span>
+            <input id="scoreDelta" type="number" placeholder="+10 / -10" style="width:130px" disabled />
+            <button class="btn3 btnOk" id="btn-score-adjust" disabled>Adjust Score</button>
+
+            <span class="spacer"></span>
+
+            <input id="scoreSet" type="number" placeholder="Set exact" style="width:140px" disabled />
+            <button class="btn3 btnOk" id="btn-score-set" disabled>Set Score</button>
           </div>
 
           <div class="hrow">
-            <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset coins = 0</button>
+            <button class="btn3 btnDanger" id="btn-coins-reset" disabled>Reset Coins = 0</button>
             <button class="btn3 btnDanger" id="btn-reset-free" disabled>Reset free skips/hints</button>
             <button class="btn3" id="btn-fraud-recompute" disabled>Re-evaluate fraud</button>
             <button class="btn3" id="btn-force-manual-review" disabled>Force manual review</button>
@@ -226,8 +151,7 @@
           </div>
 
           <div class="muted" style="margin-top:10px">
-            Note: coins actions require backend admin endpoints:
-            <span class="mono">POST /admin/users/:uid/coins/*</span> and <span class="mono">POST /admin/users/:uid/reset-free</span>
+            Note: Coins actions use backend admin endpoints. Score adjustment stays disabled until the backend exposes a safe admin route.
           </div>
         </div>
       </div>
@@ -236,19 +160,19 @@
 
     <!-- PAYOUTS VIEW -->
     <section id="view-payouts" class="hidden">
-      <h2 style="margin:8px 0 0 0">Monthly Pi Payouts</h2>
+      <h2 style="margin:8px 0 0 0">Season Settlement</h2>
 
       <div class="card">
         <div class="hrow payout-toolbar" style="margin-bottom:10px">
-          <div class="muted">Month key</div>
+          <div class="muted">Season</div>
           <input id="payoutMonthKey" placeholder="YYYY-MM" style="width:110px"/>
-          <div class="muted">Rate</div>
+          <div class="muted">Settlement rate</div>
           <input id="payoutRate" type="number" step="0.00000001" min="0" placeholder="0.01" style="width:120px"/>
-          <div class="muted">Threshold Pi</div>
+          <div class="muted">Min payout Pi</div>
           <input id="payoutThreshold" type="number" step="0.00000001" min="0" placeholder="0.1" style="width:120px"/>
           <span class="spacer"></span>
-          <button class="btn2" id="btn-payout-close">Close Month</button>
-          <button class="btn2" id="btn-payout-generate">Generate Payouts</button>
+          <button class="btn2" id="btn-payout-close">Close Season</button>
+          <button class="btn2" id="btn-payout-generate">Generate Settlement</button>
           <button class="btn2" id="btn-payout-run-worker">Run Worker</button>
           <button class="btn2" id="btn-payout-refresh">Refresh</button>
         </div>
@@ -266,19 +190,19 @@
 
       <div class="split">
         <div class="card">
-          <h3 style="margin:0 0 10px 0">Pi Payout History</h3>
+          <h3 style="margin:0 0 10px 0">Season Payout History</h3>
           <div class="tableWrap">
             <table class="table" id="payoutCyclesTable">
               <thead>
                 <tr>
-                  <th>month_key</th>
-                  <th>conversion_rate_locked</th>
-                  <th>min_payout_threshold_pi</th>
-                  <th>status</th>
+                  <th>season</th>
+                  <th>settlement_rate</th>
+                  <th>min_payout_pi</th>
+                  <th>settlement_status</th>
                   <th>created_at</th>
                   <th>closed_at</th>
-                  <th>total_users</th>
-                  <th>total_payout_pi</th>
+                  <th>eligible_users</th>
+                  <th>season_payout_pi</th>
                   <th>action</th>
                 </tr>
               </thead>
@@ -290,13 +214,13 @@
         </div>
 
         <div class="card">
-          <h3 style="margin:0 0 10px 0">Snapshot Summary (per cycle)</h3>
+          <h3 style="margin:0 0 10px 0">Score-based settlement summary</h3>
           <div id="payoutSummary" class="muted">Loading…</div>
         </div>
       </div>
 
       <div class="card">
-        <h3 style="margin:0 0 10px 0">Payout Jobs</h3>
+        <h3 style="margin:0 0 10px 0">Settlement Jobs</h3>
         <div class="hrow payout-filters" style="margin-bottom:10px">
           <div class="muted">Month</div>
           <input id="payoutFilterMonth" placeholder="YYYY-MM" style="width:110px"/>
@@ -403,6 +327,7 @@
 <script src="admin.js"></script>
 </body>
 </html>
+
 
 
 

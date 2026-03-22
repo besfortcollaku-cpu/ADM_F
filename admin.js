@@ -135,34 +135,6 @@ function showView(which) {
   closeSidebar();
 }
 
-/* DASHBOARD */
-async function loadDashboard() {
-  try {
-    setStatus("Loading dashboard…");
-    const out = await adminFetch("/admin/stats");
-    loadCharts();
-
-    const d = out?.data || {};
-    document.getElementById("kpiUsers").textContent = d.users_total ?? "–";
-    document.getElementById("kpiCoins").textContent = d.coins_total ?? "–";
-    document.getElementById("kpiOnline").textContent = d.online_now ?? "–";
-    document.getElementById("kpiAdCount").textContent = d.ad50_count ?? "–";
-    document.getElementById("kpiDailyCount").textContent = d.daily_login_count ?? "–";
-    document.getElementById("kpiLevels").textContent = d.level_complete_count ?? "–";
-
-    document.getElementById("dashboard").innerHTML =
-      "<pre class='mono'>" + escapeHtml(JSON.stringify(out, null, 2)) + "</pre>";
-
-    await loadChartsFromStats(out);
-    setStatus("OK");
-  } catch (e) {
-    console.error(e);
-    document.getElementById("dashboard").innerHTML =
-      "<span class='danger'>Error: " + escapeHtml(e?.message || String(e)) + "</span>";
-    setStatus("Error");
-  }
-}
-
 /* USERS */
 function setDetailEnabled(on) {
   const ids = [
@@ -197,15 +169,12 @@ function userRowHTML(u) {
     <tr data-uid="${escapeHtml(uid)}" class="${isSel ? "selected" : ""}">
       <td>${escapeHtml(u.username || "")}</td>
       <td class="mono">${escapeHtml(uid)}</td>
-      <td>${num(u.coins)}</td>
+      <td>${getUserCoins(u)}</td>
+      <td>${getUserScore(u)}</td>
+      <td>${getUserDailyScore(u)}</td>
       <td>${num(u.free_skips_used)}</td>
       <td>${num(u.free_hints_used)}</td>
-      <td>${num(u.fraud_score)}</td>
-      <td>${u.vpn_flag ? "YES" : "NO"}</td>
-      <td>${u.suspicious ? "YES" : "NO"}</td>
-      <td>${u.manual_review_required ? "YES" : "NO"}</td>
-      <td>${u.payout_locked ? "YES" : "NO"}</td>
-      <td>${num(u.ads_watched_today)}</td>
+      <td>${escapeHtml(getUserRiskSummary(u))}</td>
       <td class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</td>
       <td class="muted">${escapeHtml(updated)}</td>
     </tr>
@@ -226,30 +195,51 @@ function renderUserDetail(d) {
   const p = d?.progress || null;
   const s = d?.stats || {};
   const ls = d?.last_session || null;
+  const payoutRows = d?.recent_payout_rows || d?.payout_rows || d?.recentPayoutRows || null;
+  const rewardRows = d?.recent_reward_rows || d?.reward_rows || d?.recentRewardRows || null;
+  const currentRank = getCurrentRank(u);
 
   const parts = [];
   parts.push(`<div class="hrow">
     <div>
-      <div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "—")}</div>
+      <div style="font-weight:800;font-size:18px">${escapeHtml(u.username || "-")}</div>
       <div class="muted mono">${escapeHtml(u.uid || "")}</div>
     </div>
     <div class="spacer"></div>
-    <div class="pill">Coins: <b>${num(u.coins)}</b></div>
+    <div class="pill">Coins: <b>${getUserCoins(u)}</b></div>
+    <div class="pill">Score: <b>${getUserScore(u)}</b></div>
   </div>`);
   parts.push(`<div class="divider"></div>`);
 
   parts.push(`<div class="grid" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin:0">
     <div class="card" style="padding:12px">
-      <div class="kpi-title">Free skips used</div>
-      <div class="kpi-value" style="font-size:22px">${num(u.free_skips_used)}</div>
-      <div class="kpi-sub">Lifetime freebies handled server-side</div>
+      <div class="kpi-title">Daily Score</div>
+      <div class="kpi-value" style="font-size:22px">${getUserDailyScore(u)}</div>
+      <div class="kpi-sub">Current season daily Score</div>
     </div>
     <div class="card" style="padding:12px">
-      <div class="kpi-title">Free hints used</div>
-      <div class="kpi-value" style="font-size:22px">${num(u.free_hints_used)}</div>
-      <div class="kpi-sub">Lifetime freebies handled server-side</div>
+      <div class="kpi-title">Projected Tier</div>
+      <div class="kpi-value" style="font-size:22px">${escapeHtml(getProjectedTier(u))}</div>
+      <div class="kpi-sub">${currentRank ? `Current rank #${currentRank}` : "Rank unavailable"}</div>
     </div>
   </div>`);
+
+  parts.push(`<div class="divider"></div>`);
+  parts.push(`<div class="muted">Economy</div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">coins</span><span class="spacer"></span><span>${getUserCoins(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">score</span><span class="spacer"></span><span>${getUserScore(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">daily_score</span><span class="spacer"></span><span>${getUserDailyScore(u)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">current_rank</span><span class="spacer"></span><span>${currentRank ? "#" + currentRank : "-"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">projected_tier</span><span class="spacer"></span><span>${escapeHtml(getProjectedTier(u))}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
+  `);
+
+  parts.push(`<div class="divider"></div>`);
+  parts.push(`<div class="muted">Gameplay</div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">free_skips_used</span><span class="spacer"></span><span>${num(u.free_skips_used)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">free_hints_used</span><span class="spacer"></span><span>${num(u.free_hints_used)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">ads_watched_today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
+  `);
 
   parts.push(`<div class="divider"></div>`);
   parts.push(`<div class="muted">Risk</div>
@@ -258,12 +248,21 @@ function renderUserDetail(d) {
     <div class="hrow" style="margin:6px 0"><span class="muted">suspicious</span><span class="spacer"></span><span>${u.suspicious ? "YES" : "NO"}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">manual_review_required</span><span class="spacer"></span><span>${u.manual_review_required ? "YES" : "NO"}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">payout_locked</span><span class="spacer"></span><span>${u.payout_locked ? "YES" : "NO"}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">ads_watched_today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
-    <div class="hrow" style="margin:6px 0"><span class="muted">wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
     <div class="muted">risk_flags</div>
     <pre class="mono">${escapeHtml(JSON.stringify(u.risk_flags || [], null, 2))}</pre>
   `);
-  parts.push(`<div class="muted">Progress</div>
+
+  if (payoutRows) {
+    parts.push(`<div class="divider"></div><div class="muted">Recent payout rows</div>
+      <pre class="mono">${escapeHtml(JSON.stringify(payoutRows, null, 2))}</pre>`);
+  }
+
+  if (rewardRows) {
+    parts.push(`<div class="divider"></div><div class="muted">Recent reward / ledger rows</div>
+      <pre class="mono">${escapeHtml(JSON.stringify(rewardRows, null, 2))}</pre>`);
+  }
+
+  parts.push(`<div class="divider"></div><div class="muted">Progress</div>
     <pre class="mono">${escapeHtml(JSON.stringify(p, null, 2))}</pre>
     <div class="muted">Reward stats</div>
     <pre class="mono">${escapeHtml(JSON.stringify(s, null, 2))}</pre>
@@ -307,7 +306,7 @@ async function loadUsers(reset=false) {
 
     const tbody = document.getElementById("usersTbody");
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="13" class="muted">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="muted">No users found.</td></tr>`;
       selectedUid = null;
       selectedUser = null;
       setDetailEnabled(false);
@@ -337,7 +336,7 @@ async function loadUsers(reset=false) {
   } catch (e) {
     console.error(e);
     document.getElementById("usersTbody").innerHTML =
-      `<tr><td colspan="13" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
+      `<tr><td colspan="10" class="danger">Error: ${escapeHtml(e?.message || String(e))}</td></tr>`;
     setUsersMeta(0);
     setStatus("Error");
   }
@@ -377,7 +376,7 @@ function onlineRowHTML(r) {
     <tr>
       <td>${escapeHtml(r.username || "")}</td>
       <td class="mono">${escapeHtml(r.uid || "")}</td>
-      <td>${num(r.coins)}</td>
+      <td>${getUserCoins(r)}</td>
       <td class="muted">${escapeHtml(lastSeen)}</td>
       <td class="muted">${escapeHtml(started)}</td>
       <td class="muted">${escapeHtml((r.user_agent || "").slice(0,120))}</td>
@@ -445,6 +444,38 @@ function maskWallet(v) {
 function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function getUserCoins(u) {
+  return num(u?.mc_balance ?? u?.coins);
+}
+
+function getUserScore(u) {
+  return num(u?.rp_score ?? u?.score ?? u?.rpScore);
+}
+
+function getUserDailyScore(u) {
+  return num(u?.daily_rp ?? u?.dailyScore ?? u?.dailyRp);
+}
+
+function getProjectedTier(u) {
+  return String(u?.projectedTierLabel ?? u?.projected_tier_label ?? u?.projectedTierName ?? u?.projected_tier_name ?? u?.tier_label ?? u?.tier_name ?? "").trim() || "-";
+}
+
+function getCurrentRank(u) {
+  const value = u?.currentRank ?? u?.current_rank ?? u?.rank ?? null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function getUserRiskSummary(u) {
+  const flags = [];
+  if (u?.payout_locked) flags.push("locked");
+  if (u?.manual_review_required) flags.push("manual");
+  if (u?.suspicious) flags.push("suspicious");
+  if (u?.vpn_flag) flags.push("vpn");
+  if (num(u?.fraud_score) > 0) flags.push(`fraud:${num(u?.fraud_score)}`);
+  return flags.length ? flags.join(", ") : "ok";
 }
 
 async function refreshUsersAndDetail() {
@@ -524,7 +555,7 @@ function renderPayoutCycles(rows) {
   const tbody = document.getElementById("payoutCyclesTbody");
   if (!tbody) return;
   if (!Array.isArray(rows) || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="muted">No payout cycles yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="muted">No season settlements yet.</td></tr>`;
     return;
   }
 
@@ -566,13 +597,14 @@ function renderPayoutSummary(summary) {
 
   const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(String(value ?? 0))}</span></div>`;
   el.innerHTML = [
-    item("total users snapshotted", summary.total_users_snapshotted),
-    item("eligible for payout", summary.eligible_count),
+    item("projected payout rows", summary.total_users_snapshotted),
+    item("payout eligible users", summary.eligible_count),
     item("below threshold", summary.below_threshold_count),
-    item("queued payouts", summary.queued_count),
-    item("paid payouts", summary.paid_count),
-    item("failed payouts", summary.failed_count),
-    item("total payout Pi", summary.total_payout_pi_amount),
+    item("queued settlement jobs", summary.queued_count),
+    item("paid settlements", summary.paid_count),
+    item("failed settlements", summary.failed_count),
+    item("season payout Pi", summary.total_payout_pi_amount),
+    item("tier summary", summary.tier_summary ?? "–"),
   ].join("");
 }
 
@@ -591,7 +623,7 @@ function renderPayoutJobs(rows) {
   const tbody = document.getElementById("payoutJobsTbody");
   if (!tbody) return;
   if (!Array.isArray(rows) || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="17" class="muted">No payout jobs yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="muted">No settlement jobs yet.</td></tr>`;
     setPayoutJobsMeta();
     return;
   }
@@ -755,13 +787,13 @@ async function loadPayouts() {
     if (last) last.textContent = "Last refresh: " + payoutLastRefreshAt.toLocaleString();
 
     setPayoutActionState("Ready", "ok");
-    setStatus("Payouts loaded");
+    setStatus("Season settlement loaded");
     setStatusTone("ok");
   } catch (e) {
     setPayoutActionState("Error", "err");
-    setStatus("Payouts error");
+    setStatus("Season settlement error");
     setStatusTone("err");
-    toast("Payouts load failed: " + (e?.message || String(e)), 3000);
+    toast("Season settlement load failed: " + (e?.message || String(e)), 3000);
   } finally {
     setPayoutLoading(false);
   }
@@ -826,8 +858,8 @@ document.getElementById("btn-coins-add").onclick = async () => {
   const delta = Number(document.getElementById("coinsDelta").value || 0);
   if (!Number.isFinite(delta) || delta === 0) return alert("Enter a delta (e.g. 50 or -50)");
   try {
-    setStatus("Updating coins…");
-    toast("Updating coins…");
+    setStatus("Adjusting Coins...");
+    toast("Adjusting Coins...");
     await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/add", { delta });
     await refreshUsersAndDetail();
     setStatus("OK");
@@ -843,8 +875,8 @@ document.getElementById("btn-coins-set").onclick = async () => {
   const coins = Number(document.getElementById("coinsSet").value);
   if (!Number.isFinite(coins) || coins < 0) return alert("Enter a valid non-negative number");
   try {
-    setStatus("Setting coins…");
-    toast("Setting coins…");
+    setStatus("Setting Coins...");
+    toast("Setting Coins...");
     await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/set", { coins });
     await refreshUsersAndDetail();
     setStatus("OK");
@@ -857,10 +889,10 @@ document.getElementById("btn-coins-set").onclick = async () => {
 
 document.getElementById("btn-coins-reset").onclick = async () => {
   if (!selectedUid) return;
-  if (!confirm("Reset this user's coins to 0?")) return;
+  if (!confirm("Reset this user's Coins to 0?")) return;
   try {
-    setStatus("Resetting coins…");
-    toast("Resetting coins…");
+    setStatus("Resetting Coins...");
+    toast("Resetting Coins...");
     await adminSend("POST", "/admin/users/" + encodeURIComponent(selectedUid) + "/coins/reset", {});
     await refreshUsersAndDetail();
     setStatus("OK");
@@ -973,17 +1005,15 @@ document.getElementById("btn-user-delete").onclick = async () => {
 };
 
 /* NAV / INIT */
-document.getElementById("tab-dashboard").onclick = () => { showView("dashboard"); loadDashboard(); };
 document.getElementById("tab-users").onclick = () => { showView("users"); loadUsers(true); };
 document.getElementById("tab-online").onclick = () => { showView("online"); loadOnline(); };
 document.getElementById("tab-payouts").onclick = () => { showView("payouts"); loadPayouts(); };
 
 document.getElementById("btn-refresh").onclick = () => {
-  const active = document.querySelector(".tab.active")?.id || "tab-dashboard";
+  const active = document.querySelector(".tab.active")?.id || "tab-users";
   if (active === "tab-users") loadUsers(false);
   else if (active === "tab-online") loadOnline();
   else if (active === "tab-payouts") loadPayouts();
-  else loadDashboard();
 };
 
 document.getElementById("btn-secret").onclick = () => {
@@ -1045,8 +1075,8 @@ document.getElementById("btn-payout-close").onclick = async () => {
   if (!Number.isFinite(min_payout_threshold_pi) || min_payout_threshold_pi < 0) return alert("Valid threshold required");
 
   await payoutAction(
-    "Close Month",
-    `Close month ${month_key}? This locks rate and snapshots user monthly payouts.`,
+    "Close Season",
+    `Close season ${month_key}? This locks settlement data and snapshots score-based payouts.`,
     () => adminSend("POST", "/admin/month-close", { month_key, conversion_rate_locked, min_payout_threshold_pi })
   );
 };
@@ -1056,8 +1086,8 @@ document.getElementById("btn-payout-generate").onclick = async () => {
   if (!month_key) return alert("Month key required (YYYY-MM)");
 
   await payoutAction(
-    "Generate Payouts",
-    `Generate payout jobs for ${month_key}?`,
+    "Generate Settlement",
+    `Generate settlement jobs for ${month_key}?`,
     () => adminSend("POST", "/admin/payouts/generate", { month_key })
   );
 };
@@ -1111,149 +1141,11 @@ window.onload = () => {
   const thEl = document.getElementById("payoutThreshold");
   if (thEl && !thEl.value) thEl.value = "0.1";
 
-  showView("dashboard");
-  loadDashboard();
+  showView("users");
+  loadUsers(true);
   setDetailEnabled(false);
   setDetailMeta("No user selected");
 };
-
-setInterval(() => {
-  const active = document.querySelector(".tab.active")?.id || "";
-  if (active === "tab-dashboard") loadDashboard();
-}, 30000);
-
-
-/* -----------------------
-   CHARTS (Dashboard)
------------------------ */
-let _chartCoins = null;
-let _chartLogins = null;
-
-function setChartHint(id, msg){
-  const el = document.getElementById(id);
-  if (el) el.textContent = msg || "";
-}
-
-function ensureChartJs(){
-  return new Promise((resolve) => {
-    if (window.Chart) return resolve(true);
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.head.appendChild(s);
-  });
-}
-
-/**
- * Expected shapes (any of these work):
- * 1) out.data.charts = { coins_growth:[{date, total}], daily_logins:[{date, count}] }
- * 2) out.data.coins_growth / out.data.daily_logins as arrays above
- * 3) Optional endpoint: GET /admin/charts?days=14 returning { coins_growth:[...], daily_logins:[...] }
- */
-async function loadChartsFromStats(statsOut){
-  const days = 14;
-
-  const d = statsOut?.data || {};
-  let coins = d?.charts?.coins_growth || d?.coins_growth || null;
-  let logins = d?.charts?.daily_logins || d?.daily_logins || null;
-
-  if (!coins || !logins){
-    try{
-      const out = await adminFetch("/admin/charts?days=" + encodeURIComponent(days));
-      const cd = out?.data || out;
-      coins = coins || cd?.coins_growth || cd?.charts?.coins_growth || null;
-      logins = logins || cd?.daily_logins || cd?.charts?.daily_logins || null;
-    }catch(e){
-      // ignore if endpoint missing
-    }
-  }
-
-  if (!Array.isArray(coins) || coins.length === 0){
-    const total = Number(d?.coins_total ?? 0) || 0;
-    coins = Array.from({length: days}, (_,i)=>{
-      const dt = new Date();
-      dt.setDate(dt.getDate() - (days-1-i));
-      return { date: dt.toISOString().slice(0,10), total };
-    });
-    setChartHint("chartCoinsHint", "No coins history endpoint yet → showing flat line (uses current total).");
-  } else {
-    setChartHint("chartCoinsHint", "");
-  }
-
-  if (!Array.isArray(logins) || logins.length === 0){
-    logins = Array.from({length: days}, (_,i)=>{
-      const dt = new Date();
-      dt.setDate(dt.getDate() - (days-1-i));
-      return { date: dt.toISOString().slice(0,10), count: 0 };
-    });
-    setChartHint("chartLoginsHint", "No daily logins history endpoint yet → showing zeros.");
-  } else {
-    setChartHint("chartLoginsHint", "");
-  }
-
-  const ok = await ensureChartJs();
-  if (!ok){
-    setChartHint("chartCoinsHint", "Chart.js failed to load (CDN blocked).");
-    setChartHint("chartLoginsHint", "Chart.js failed to load (CDN blocked).");
-    return;
-  }
-
-  const coinsLabels = coins.map(x => String(x.date || x.day || x.t || "").slice(0,10));
-  const coinsValues = coins.map(x => Number(x.total ?? x.value ?? x.coins ?? 0) || 0);
-
-  const loginsLabels = logins.map(x => String(x.date || x.day || x.t || "").slice(0,10));
-  const loginsValues = logins.map(x => Number(x.count ?? x.value ?? x.logins ?? 0) || 0);
-
-  const c1 = document.getElementById("chartCoins");
-  const c2 = document.getElementById("chartLogins");
-  if (!c1 || !c2) return;
-
-  try { _chartCoins?.destroy(); } catch {}
-  try { _chartLogins?.destroy(); } catch {}
-
-  _chartCoins = new Chart(c1, {
-    type: "line",
-    data: {
-      labels: coinsLabels,
-      datasets: [{
-        label: "Total Coins",
-        data: coinsValues,
-        tension: 0.25,
-        pointRadius: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { maxRotation: 0, autoSkip: true } },
-        y: { beginAtZero: true }
-      }
-    }
-  });
-
-  _chartLogins = new Chart(c2, {
-    type: "bar",
-    data: {
-      labels: loginsLabels,
-      datasets: [{
-        label: "Daily Logins",
-        data: loginsValues
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { maxRotation: 0, autoSkip: true } },
-        y: { beginAtZero: true }
-      }
-    }
-  });
-}
 
 /* -----------------------
    ✅ MOBILE SIDEBAR TOGGLE (REPLACED)
@@ -1287,83 +1179,3 @@ document.getElementById("sidebar")?.addEventListener("click", (e) => {
 window.addEventListener("resize", () => {
   if (window.innerWidth > 980) closeSidebar();
 });
-
-/* =========================
-   CHARTS
-========================= */
-
-let coinsChart, usersChart;
-
-async function loadCharts() {
-  try {
-    const coinsRes = await adminFetch("/admin/charts/coins");
-    const usersRes = await adminFetch("/admin/charts/active-users");
-
-    renderCoinsChart(coinsRes);
-    renderUsersChart(usersRes);
-  } catch (e) {
-    console.error("Chart error:", e.message);
-  }
-}
-
-function renderCoinsChart(data) {
-  const ctx = document.getElementById("coinsChart");
-  if (!ctx) return;
-
-  if (coinsChart) coinsChart.destroy();
-
-  coinsChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: data.map(d => d.day),
-      datasets: [{
-        label: "Coins",
-        data: data.map(d => d.coins),
-        tension: 0.35,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } }
-    }
-  });
-}
-
-function renderUsersChart(data) {
-  const ctx = document.getElementById("usersChart");
-  if (!ctx) return;
-
-  if (usersChart) usersChart.destroy();
-
-  usersChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.map(d => d.day),
-      datasets: [{
-        label: "Active Users",
-        data: data.map(d => d.active_users)
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } }
-    }
-  });
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
