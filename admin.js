@@ -204,6 +204,7 @@ function setDetailEnabled(on) {
     "btn-coins-reset",
     "btn-reset-free",
     "btn-detail-refresh",
+    "btn-user-reset",
     "btn-user-delete",
     "btn-fraud-recompute",
     "btn-force-manual-review",
@@ -1185,6 +1186,34 @@ document.getElementById("btn-user-delete").onclick = async () => {
 
     setStatus("OK");
     toast("User deleted");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-user-reset").onclick = async () => {
+  if (!selectedUid) return;
+
+  const username = selectedUser?.user?.username || selectedUid;
+  const ok = confirm(
+    `Reset this user to a new player state?\n\n${username}\n\nThis resets Coins, Score, progress, and monthly testing state for this user only.`
+  );
+  if (!ok) return;
+
+  const reason = String(prompt("Reason for reset:", "testing reset") || "").trim();
+  if (!reason) return alert("Reason is required");
+
+  try {
+    setStatus("Resetting user...");
+    toast("Resetting user...");
+    await adminSend("POST", "/admin/reset-user", {
+      uid: selectedUid,
+      reason,
+    });
+    await refreshUsersAndDetail();
+    setStatus("OK");
+    toast("User reset");
   } catch (e) {
     alert(e?.message || String(e));
     setStatus("Error");
