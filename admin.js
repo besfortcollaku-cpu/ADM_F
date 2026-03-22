@@ -504,6 +504,41 @@ function txidCell(txid) {
   return `<a class="mono" href="#" title="Blockchain TX" onclick="return false;">Blockchain TX</a><div class="muted mono">${escapeHtml(t)}</div>`;
 }
 
+function normalizeSettlementResponse(data) {
+  const payload = data?.data || data || {};
+  return {
+    monthKey: payload.monthKey || payload.month_key || payload.month || "-",
+    status: payload.status || "-",
+    alreadySettled: payload.alreadySettled === true || payload.already_settled === true,
+    poolPi: payload.poolPi ?? payload.totalPoolPi ?? payload.pool_pi ?? null,
+    eligibleUsers: payload.eligibleUsers ?? payload.eligible_users ?? null,
+    totalScore: payload.totalScore ?? payload.totalRp ?? payload.total_score ?? null,
+    payoutRowCount: payload.payoutRowCount ?? payload.payoutsCreated ?? payload.count ?? null,
+    totalPayoutPi: payload.totalPayoutPi ?? payload.totalProjectedPayoutPi ?? payload.total_payout_pi ?? null,
+    tierSummary: Array.isArray(payload.tierSummary) ? payload.tierSummary : [],
+    rows: Array.isArray(payload.projectedPayoutRows) ? payload.projectedPayoutRows
+      : Array.isArray(payload.payoutRows) ? payload.payoutRows
+      : Array.isArray(payload.rows) ? payload.rows
+      : [],
+  };
+}
+
+function getSettlementRows(data) {
+  return normalizeSettlementResponse(data).rows || [];
+}
+
+function getTierSummary(data) {
+  return normalizeSettlementResponse(data).tierSummary || [];
+}
+
+function renderSettlementStateMessage(summary) {
+  if (!summary) return "No settlement data yet.";
+  if (summary.alreadySettled) return "Settlement already completed for this month.";
+  if (String(summary.status || "").toLowerCase() === "preview") return "Preview only - no changes have been applied.";
+  if (String(summary.status || "").toLowerCase() === "completed" || String(summary.status || "").toLowerCase() === "closed") return "Settlement completed successfully.";
+  return "Score-based settlement ready.";
+}
+
 function setPayoutActionState(text, tone) {
   const el = document.getElementById("payoutActionState");
   if (!el) return;
@@ -523,8 +558,9 @@ function setPayoutActionState(text, tone) {
 function setPayoutLoading(on) {
   payoutLoading = !!on;
   [
-    "btn-payout-close",
-    "btn-payout-generate",
+    "btn-payout-preview",
+    "btn-payout-status",
+    "btn-payout-run",
     "btn-payout-run-worker",
     "btn-payout-refresh",
     "btn-payout-filter-apply",
@@ -606,6 +642,75 @@ function renderPayoutSummary(summary) {
     item("season payout Pi", summary.total_payout_pi_amount),
     item("tier summary", summary.tier_summary ?? "–"),
   ].join("");
+}
+
+function renderSettlementSummary(data) {
+  const el = document.getElementById("payoutSettlementSummary");
+  const stateEl = document.getElementById("payoutSettlementState");
+  const runBtn = document.getElementById("btn-payout-run");
+  if (!el || !stateEl) return;
+
+  if (!data) {
+    stateEl.textContent = "No settlement data yet.";
+    el.innerHTML = `<div class="muted">Select a month to preview or check settlement status.</div>`;
+    if (runBtn) runBtn.disabled = false;
+    return;
+  }
+
+  const summary = normalizeSettlementResponse(data);
+  const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(String(value ?? "–"))}</span></div>`;
+  stateEl.textContent = renderSettlementStateMessage(summary);
+  el.innerHTML = [
+    item("Month", summary.monthKey || "–"),
+    item("Status", summary.status || "–"),
+    item("Already Settled", summary.alreadySettled ? "YES" : "NO"),
+    item("Monthly Pool", summary.poolPi ?? "–"),
+    item("Eligible Users", summary.eligibleUsers ?? "–"),
+    item("Total Score", summary.totalScore ?? "–"),
+    item("Payout Rows", summary.payoutRowCount ?? "–"),
+    item("Total Payout Pi", summary.totalPayoutPi ?? "–"),
+  ].join("");
+
+  if (runBtn) runBtn.disabled = !!summary.alreadySettled || payoutLoading;
+}
+
+function renderTierSummary(data) {
+  const el = document.getElementById("payoutTierSummary");
+  if (!el) return;
+  const tiers = getTierSummary(data);
+  if (!tiers.length) {
+    el.innerHTML = `<div class="muted">No tier summary yet.</div>`;
+    return;
+  }
+  el.innerHTML = tiers.map((tier) => `
+    <div class="hrow" style="margin:6px 0">
+      <span>${escapeHtml(String(tier.tierLabel || tier.tierName || "-"))}</span>
+      <span class="spacer"></span>
+      <span class="muted">Users ${escapeHtml(String(tier.userCount ?? "–"))}</span>
+      <span class="muted">Score ${escapeHtml(String(tier.totalScore ?? "–"))}</span>
+      <span class="muted">Pool ${escapeHtml(String(tier.poolPi ?? "–"))}</span>
+    </div>
+  `).join("");
+}
+
+function renderSettlementPreview(data) {
+  const tbody = document.getElementById("payoutPreviewTbody");
+  if (!tbody) return;
+  const rows = getSettlementRows(data);
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No settlement preview yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((row) => `
+    <tr>
+      <td>${escapeHtml(String(row.leaderboardRank ?? row.rank ?? "–"))}</td>
+      <td>${escapeHtml(String(row.username || row.uid || "–"))}</td>
+      <td>${escapeHtml(String(row.score ?? row.rpScore ?? "–"))}</td>
+      <td>${escapeHtml(String(row.tierLabel || row.projectedTierLabel || row.tierName || row.projectedTierName || "–"))}</td>
+      <td>${escapeHtml(String(row.payoutPi ?? row.payout_pi ?? "0"))}</td>
+      <td>${escapeHtml(String(row.status || "preview"))}</td>
+    </tr>
+  `).join("");
 }
 
 function jobActionButtons(r) {
@@ -738,12 +843,14 @@ async function loadPayouts() {
 
     const summaryQs = monthKey ? ("?month_key=" + encodeURIComponent(monthKey)) : "";
     const jobsPath = "/admin/payouts/jobs" + (jobsQs.toString() ? ("?" + jobsQs.toString()) : "");
+    const settlementStatusPath = "/admin/settlement/status" + (monthKey ? ("?month_key=" + encodeURIComponent(monthKey)) : "");
 
-    const [cfg, cycles, summary, jobs] = await Promise.all([
+    const [cfg, cycles, summary, jobs, settlementStatus] = await Promise.all([
       adminFetch("/admin/payouts/config"),
       adminFetch("/admin/payouts/cycles?limit=12"),
       adminFetch("/admin/payouts/snapshots" + summaryQs),
       adminFetch(jobsPath),
+      adminFetch(settlementStatusPath).catch(() => null),
     ]);
 
     const simulation = !!cfg?.simulation_mode;
@@ -778,6 +885,9 @@ async function loadPayouts() {
 
     renderPayoutCycles(cycles?.rows || []);
     renderPayoutSummary(summary?.summary || null);
+    renderSettlementSummary(settlementStatus);
+    renderTierSummary(settlementStatus);
+    renderSettlementPreview(settlementStatus);
     payoutJobsCount = Number(jobs?.count || 0);
     renderPayoutJobs(jobs?.rows || []);
     setPayoutJobsMeta();
@@ -1065,30 +1175,59 @@ document.getElementById("btn-payout-jobs-next").onclick = () => {
   loadPayouts();
 };
 
-document.getElementById("btn-payout-close").onclick = async () => {
+document.getElementById("btn-payout-preview").onclick = async () => {
+  const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
+  if (!month_key) return alert("Month key required (YYYY-MM)");
+  await payoutAction(
+    "Preview Settlement",
+    "",
+    async () => {
+      const out = await adminFetch("/admin/settlement/preview?month_key=" + encodeURIComponent(month_key));
+      renderSettlementSummary(out);
+      renderTierSummary(out);
+      renderSettlementPreview(out);
+      setPayoutActionState("Preview loaded", "ok");
+    }
+  );
+};
+
+document.getElementById("btn-payout-status").onclick = async () => {
+  const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
+  if (!month_key) return alert("Month key required (YYYY-MM)");
+  await payoutAction(
+    "Check Status",
+    "",
+    async () => {
+      const out = await adminFetch("/admin/settlement/status?month_key=" + encodeURIComponent(month_key));
+      renderSettlementSummary(out);
+      renderTierSummary(out);
+      renderSettlementPreview(out);
+      setPayoutActionState("Status loaded", "ok");
+    }
+  );
+};
+
+document.getElementById("btn-payout-run").onclick = async () => {
   const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
   const conversion_rate_locked = Number(document.getElementById("payoutRate")?.value);
   const min_payout_threshold_pi = Number(document.getElementById("payoutThreshold")?.value || 0);
 
   if (!month_key) return alert("Month key required (YYYY-MM)");
-  if (!Number.isFinite(conversion_rate_locked) || conversion_rate_locked < 0) return alert("Valid conversion rate required");
+  if (!Number.isFinite(conversion_rate_locked) || conversion_rate_locked < 0) return alert("Valid settlement rate required");
   if (!Number.isFinite(min_payout_threshold_pi) || min_payout_threshold_pi < 0) return alert("Valid threshold required");
 
   await payoutAction(
-    "Close Season",
-    `Close season ${month_key}? This locks settlement data and snapshots score-based payouts.`,
-    () => adminSend("POST", "/admin/month-close", { month_key, conversion_rate_locked, min_payout_threshold_pi })
-  );
-};
-
-document.getElementById("btn-payout-generate").onclick = async () => {
-  const month_key = (document.getElementById("payoutMonthKey")?.value || "").trim();
-  if (!month_key) return alert("Month key required (YYYY-MM)");
-
-  await payoutAction(
-    "Generate Settlement",
-    `Generate settlement jobs for ${month_key}?`,
-    () => adminSend("POST", "/admin/payouts/generate", { month_key })
+    "Run Settlement",
+    `Run settlement for ${month_key}? Score will reset for the settled season, Coins will not.`,
+    async () => {
+      const out = await adminSend("POST", "/admin/month-close", { month_key, conversion_rate_locked, min_payout_threshold_pi });
+      renderSettlementSummary(out);
+      renderTierSummary(out);
+      renderSettlementPreview(out);
+      if (out?.alreadySettled) {
+        toast("This month has already been settled");
+      }
+    }
   );
 };
 
