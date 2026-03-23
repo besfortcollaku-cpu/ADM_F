@@ -235,6 +235,26 @@ body{
   backdrop-filter: blur(6px);
 }
 
+.adminMiniGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(90px,1fr));
+  gap:8px;
+}
+
+.adminMiniStat{
+  border:1px solid var(--border2);
+  background:var(--panel2);
+  border-radius:12px;
+  padding:8px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.adminMiniStat strong{
+  font-size:15px;
+}
+
 /* row hover + selected stronger */
 .table tr:hover{ background:#0f2147; }
 tr.selected{ background:#1a3570 !important; }
@@ -255,6 +275,7 @@ input, select{
 @media (max-width: 980px){
   .charts{ grid-template-columns: 1fr; }
   .table{ min-width: 720px; }
+  .adminMiniGrid{ grid-template-columns:repeat(2,minmax(90px,1fr)); }
 }
 /* =========================
    DATA PANEL (compact / dense)

@@ -93,6 +93,44 @@ function renderEconomyHealth(stats) {
   warningsEl.innerHTML = warnings.join("");
 }
 
+function renderLevelAccessAnalytics(stats) {
+  const dayEl = document.getElementById("levelAccessAnalyticsDay");
+  const summaryEl = document.getElementById("levelAccessAnalyticsSummary");
+  const distributionEl = document.getElementById("levelAccessAnalyticsDistribution");
+  if (!dayEl || !summaryEl || !distributionEl) return;
+
+  if (!stats) {
+    dayEl.textContent = "Unavailable";
+    summaryEl.innerHTML = `<div class="muted">Level access analytics unavailable.</div>`;
+    distributionEl.innerHTML = "";
+    return;
+  }
+
+  const distribution = stats.levelAccessDistribution || {};
+  const item = (label, value) => `<div class="hrow" style="margin:6px 0"><span class="muted">${label}</span><span class="spacer"></span><span>${escapeHtml(formatMaybe(value))}</span></div>`;
+  const bucket = (label, value) => `<div class="adminMiniStat"><span class="muted">${label}</span><strong>${escapeHtml(formatMaybe(value))}</strong></div>`;
+
+  dayEl.textContent = formatMaybe(stats.levelAccessDayKey);
+  summaryEl.innerHTML = [
+    item("Active Users Today", stats.levelAccessActiveUsers),
+    item("Avg Levels Completed", stats.levelAccessAvgLevelsCompleted),
+    item("Waiting Events", stats.levelAccessWaitingEvents),
+    item("Ad Unlock Events", stats.levelAccessAdUnlockEvents),
+    item("Users Reaching Max", stats.levelAccessCapReachedUsers),
+  ].join("");
+
+  distributionEl.innerHTML = `
+    <div class="adminMiniGrid">
+      ${bucket("<10", distribution.lt10)}
+      ${bucket("10", distribution.eq10)}
+      ${bucket("11–14", distribution["11_14"])}
+      ${bucket("15–19", distribution["15_19"])}
+      ${bucket("20–29", distribution["20_29"])}
+      ${bucket("30", distribution.eq30)}
+    </div>
+  `;
+}
+
 function setOnlineAuto(on){
   const el = document.getElementById("onlineAuto");
   if (!el) return;
@@ -371,9 +409,12 @@ async function loadUsers(reset=false) {
 
     try {
       const statsOut = await adminFetch("/admin/stats?minutes=5");
-      renderEconomyHealth(statsOut?.data || statsOut || null);
+      const stats = statsOut?.data || statsOut || null;
+      renderEconomyHealth(stats);
+      renderLevelAccessAnalytics(stats);
     } catch {
       renderEconomyHealth(null);
+      renderLevelAccessAnalytics(null);
     }
 
     const q = document.getElementById("usersSearch").value.trim();
