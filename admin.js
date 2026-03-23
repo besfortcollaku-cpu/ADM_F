@@ -203,6 +203,8 @@ function setDetailEnabled(on) {
     "btn-score-set",
     "btn-coins-reset",
     "btn-reset-free",
+    "btn-mark-test-user",
+    "btn-unmark-test-user",
     "btn-detail-refresh",
     "btn-user-reset",
     "btn-user-delete",
@@ -216,6 +218,8 @@ function setDetailEnabled(on) {
     if (!el) return;
     el.disabled = !on;
   });
+  const resetHint = document.getElementById("resetUserHint");
+  if (resetHint && !on) resetHint.textContent = "Reset is only available for test users.";
   if (!on) setDetailMeta("No user selected");
 }
 
@@ -264,6 +268,7 @@ function renderUserDetail(d) {
       <div class="muted mono">${escapeHtml(u.uid || "")}</div>
     </div>
     <div class="spacer"></div>
+    ${isTestUser(u) ? `<div class="pill testUserBadge">Test User</div>` : ""}
     <div class="pill">Coins: <b>${getUserCoins(u)}</b></div>
     <div class="pill">Score: <b>${getUserScore(u)}</b></div>
   </div>`);
@@ -289,6 +294,7 @@ function renderUserDetail(d) {
     <div class="hrow" style="margin:6px 0"><span class="muted">Daily Score</span><span class="spacer"></span><span>${getUserDailyScore(u)}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">Current Rank</span><span class="spacer"></span><span>${currentRank ? "#" + currentRank : "-"}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">Projected Tier</span><span class="spacer"></span><span>${escapeHtml(getProjectedTier(u))}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Test User</span><span class="spacer"></span><span>${isTestUser(u) ? "YES" : "-"}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">Wallet</span><span class="spacer"></span><span class="mono">${escapeHtml(maskWallet(u.pi_wallet_identifier))}</span></div>
   `);
 
@@ -338,6 +344,24 @@ function renderUserDetail(d) {
     </details>
   `);
   return parts.join("");
+}
+
+function updateDetailTestUserControls() {
+  const user = selectedUser?.user || {};
+  const flagged = isTestUser(user);
+  const resetBtn = document.getElementById("btn-user-reset");
+  const markBtn = document.getElementById("btn-mark-test-user");
+  const unmarkBtn = document.getElementById("btn-unmark-test-user");
+  const hintEl = document.getElementById("resetUserHint");
+
+  if (resetBtn) resetBtn.disabled = !selectedUid || !flagged;
+  if (markBtn) markBtn.disabled = !selectedUid || flagged;
+  if (unmarkBtn) unmarkBtn.disabled = !selectedUid || !flagged;
+  if (hintEl) {
+    hintEl.textContent = flagged
+      ? "Reset is enabled for this test user."
+      : "Reset is only available for test users.";
+  }
 }
 
 async function loadUsers(reset=false) {
@@ -432,6 +456,7 @@ async function loadUserDetail(uid) {
 
     document.getElementById("userDetail").innerHTML = renderUserDetail(d);
     setDetailEnabled(true);
+    updateDetailTestUserControls();
 
     setStatus("OK");
   } catch (e) {
@@ -541,6 +566,10 @@ function getCurrentRank(u) {
   const value = u?.currentRank ?? u?.current_rank ?? u?.rank ?? null;
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function isTestUser(u) {
+  return Boolean(u?.isTestUser ?? u?.is_test_user);
 }
 
 function getUserRiskSummary(u) {
@@ -1107,6 +1136,37 @@ document.getElementById("btn-reset-free").onclick = async () => {
   }
 };
 
+document.getElementById("btn-mark-test-user").onclick = async () => {
+  if (!selectedUid) return;
+  try {
+    setStatus("Marking test user...");
+    await adminSend("POST", "/admin/set-test-user", { uid: selectedUid, isTestUser: true });
+    await refreshUsersAndDetail();
+    updateDetailTestUserControls();
+    setStatus("OK");
+    toast("Marked as test user");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
+document.getElementById("btn-unmark-test-user").onclick = async () => {
+  if (!selectedUid) return;
+  if (!confirm("Remove test user flag for this user?")) return;
+  try {
+    setStatus("Removing test flag...");
+    await adminSend("POST", "/admin/set-test-user", { uid: selectedUid, isTestUser: false });
+    await refreshUsersAndDetail();
+    updateDetailTestUserControls();
+    setStatus("OK");
+    toast("Test user flag removed");
+  } catch (e) {
+    alert(e?.message || String(e));
+    setStatus("Error");
+  }
+};
+
 document.getElementById("btn-fraud-recompute").onclick = async () => {
   if (!selectedUid) return;
   try {
@@ -1194,6 +1254,7 @@ document.getElementById("btn-user-delete").onclick = async () => {
 
 document.getElementById("btn-user-reset").onclick = async () => {
   if (!selectedUid) return;
+  if (!isTestUser(selectedUser?.user)) return alert("Reset is allowed only for test users");
 
   const username = selectedUser?.user?.username || selectedUid;
   const ok = confirm(
