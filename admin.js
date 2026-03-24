@@ -290,6 +290,52 @@ function setUsersMeta(count) {
   meta.textContent = `Showing ${start}–${end} of ${count}`;
 }
 
+function formatAdminDateTime(value) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return escapeHtml(String(value));
+  return escapeHtml(d.toLocaleString());
+}
+
+function renderRewardEventsTable(rows) {
+  if (!rows || !rows.length) {
+    return `<div class="muted">No recent reward events</div>`;
+  }
+
+  return `
+    <div class="tableWrap adminMiniTableWrap">
+      <table class="table adminMiniTable">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Replay</th>
+            <th>Hint</th>
+            <th>Skip</th>
+            <th>Restart</th>
+            <th>Coins</th>
+            <th>Score</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>${escapeHtml(row.levelId || "-")}</td>
+              <td>${row.isReplay ? "YES" : "NO"}</td>
+              <td>${row.usedHint ? "YES" : "NO"}</td>
+              <td>${row.usedSkip ? "YES" : "NO"}</td>
+              <td>${row.usedRestart ? "YES" : "NO"}</td>
+              <td>${Number(row.coinsAwarded || 0) > 0 ? `+${num(row.coinsAwarded)}` : num(row.coinsAwarded)}</td>
+              <td>${Number(row.scoreAwarded || 0) > 0 ? `+${num(row.scoreAwarded)}` : num(row.scoreAwarded)}</td>
+              <td class="muted">${formatAdminDateTime(row.createdAt)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderUserDetail(d) {
   const u = d?.user || {};
   const p = d?.progress || null;
@@ -297,6 +343,7 @@ function renderUserDetail(d) {
   const ls = d?.last_session || null;
   const payoutRows = d?.recent_payout_rows || d?.payout_rows || d?.recentPayoutRows || null;
   const rewardRows = d?.recent_reward_rows || d?.reward_rows || d?.recentRewardRows || null;
+  const rewardEventRows = d?.recent_reward_events || d?.reward_events || d?.recentRewardEvents || null;
   const currentRank = getCurrentRank(u);
 
   const parts = [];
@@ -369,6 +416,11 @@ function renderUserDetail(d) {
         <pre class="mono">${escapeHtml(JSON.stringify(rewardRows, null, 2))}</pre>
       </details>`);
   }
+
+  parts.push(`<div class="divider"></div>
+    <div class="muted">Recent Reward Events</div>
+    ${renderRewardEventsTable(rewardEventRows)}
+  `);
 
   parts.push(`<div class="divider"></div>
     <details class="adminRawBlock">
@@ -1526,5 +1578,4 @@ document.getElementById("sidebar")?.addEventListener("click", (e) => {
 window.addEventListener("resize", () => {
   if (window.innerWidth > 980) closeSidebar();
 });
-
 

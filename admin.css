@@ -227,6 +227,14 @@ body{
   min-width: 860px; /* prevents squish */
 }
 
+.adminMiniTableWrap{
+  margin-top:8px;
+}
+
+.adminMiniTable{
+  min-width: 640px;
+}
+
 .table thead th{
   position: sticky;
   top: 0;
