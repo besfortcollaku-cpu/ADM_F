@@ -235,6 +235,10 @@ body{
   min-width: 640px;
 }
 
+.adminProgressionFrontier td{
+  background: rgba(122, 255, 196, .08);
+}
+
 .table thead th{
   position: sticky;
   top: 0;

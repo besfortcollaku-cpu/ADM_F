@@ -336,6 +336,45 @@ function renderRewardEventsTable(rows) {
   `;
 }
 
+function formatProgressionStateLabel(state) {
+  if (state === "completed_replayable") return "Completed / Replay";
+  if (state === "available_new") return "Available Now";
+  if (state === "time_locked_next") return "Time Locked";
+  if (state === "future_locked") return "Future Locked";
+  return state ? escapeHtml(String(state)) : "-";
+}
+
+function renderProgressionPreviewTable(rows, frontierLevel) {
+  if (!rows || !rows.length) {
+    return `<div class="muted">No progression preview available</div>`;
+  }
+
+  return `
+    <div class="tableWrap adminMiniTableWrap">
+      <table class="table adminMiniTable">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+            const levelId = String(row?.levelId || "-");
+            const isFrontier = String(frontierLevel || "") === levelId;
+            return `
+              <tr${isFrontier ? ` class="adminProgressionFrontier"` : ""}>
+                <td>${escapeHtml(levelId)}${isFrontier ? ` <span class="muted">(Frontier)</span>` : ""}</td>
+                <td>${formatProgressionStateLabel(row?.state)}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderUserDetail(d) {
   const u = d?.user || {};
   const p = d?.progress || null;
@@ -344,6 +383,8 @@ function renderUserDetail(d) {
   const payoutRows = d?.recent_payout_rows || d?.payout_rows || d?.recentPayoutRows || null;
   const rewardRows = d?.recent_reward_rows || d?.reward_rows || d?.recentRewardRows || null;
   const rewardEventRows = d?.recent_reward_events || d?.reward_events || d?.recentRewardEvents || null;
+  const progressionDebug = d?.progression_debug || d?.progressionDebug || null;
+  const progressionPreview = d?.progression_preview || d?.progressionPreview || null;
   const currentRank = getCurrentRank(u);
 
   const parts = [];
@@ -388,6 +429,20 @@ function renderUserDetail(d) {
     <div class="hrow" style="margin:6px 0"><span class="muted">Free Skips Used</span><span class="spacer"></span><span>${num(u.free_skips_used)}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">Free Hints Used</span><span class="spacer"></span><span>${num(u.free_hints_used)}</span></div>
     <div class="hrow" style="margin:6px 0"><span class="muted">Ads Watched Today</span><span class="spacer"></span><span>${num(u.ads_watched_today)}</span></div>
+  `);
+
+  parts.push(`<div class="divider"></div>`);
+  parts.push(`<div class="muted">Progression Debug</div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Highest Permanent Level</span><span class="spacer"></span><span>${num(progressionDebug?.highestPermanentLevel)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Frontier Level</span><span class="spacer"></span><span>${num(progressionDebug?.currentFrontierLevel)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Daily Played</span><span class="spacer"></span><span>${num(progressionDebug?.dailyLevelsPlayed)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Daily Unlocked</span><span class="spacer"></span><span>${num(progressionDebug?.dailyLevelsUnlocked)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Daily Max</span><span class="spacer"></span><span>${num(progressionDebug?.dailyLevelsMax)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Last Reset Day</span><span class="spacer"></span><span>${escapeHtml(progressionDebug?.lastLevelResetDayKey || "-")}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Next Unlock At</span><span class="spacer"></span><span>${formatAdminDateTime(progressionDebug?.nextUnlockAt)}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Waiting For Unlock</span><span class="spacer"></span><span>${progressionDebug?.isWaitingForUnlock ? "YES" : "NO"}</span></div>
+    <div class="hrow" style="margin:6px 0"><span class="muted">Daily Cap Reached</span><span class="spacer"></span><span>${progressionDebug?.isDailyCapReached ? "YES" : "NO"}</span></div>
+    ${renderProgressionPreviewTable(progressionPreview, progressionDebug?.currentFrontierLevel)}
   `);
 
   parts.push(`<div class="divider"></div>`);
@@ -1578,4 +1633,3 @@ document.getElementById("sidebar")?.addEventListener("click", (e) => {
 window.addEventListener("resize", () => {
   if (window.innerWidth > 980) closeSidebar();
 });
-
