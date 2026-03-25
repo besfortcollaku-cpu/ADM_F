@@ -1377,10 +1377,7 @@ document.getElementById("btn-user-delete").onclick = async () => {
     setStatus("Deleting user...");
     toast("Deleting user...");
 
-    await fetch(`${API_BASE}/admin/users/${encodeURIComponent(selectedUid)}`, {
-      method: "DELETE",
-      headers: { "x-admin-secret": ADMIN_SECRET }
-    });
+    await adminSend("DELETE", "/admin/users/" + encodeURIComponent(selectedUid), {});
 
     // reset UI
     selectedUid = null;
